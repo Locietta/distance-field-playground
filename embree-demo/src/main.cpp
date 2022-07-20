@@ -8,11 +8,33 @@
 #include <glm/geometric.hpp>
 #include <glm/vec3.hpp>
 
-constexpr float voxel_size = 0.04;
-constexpr const char *output_filename = "DF_OUTPUT.ply";
+#define next_and_check(i)                                                                                              \
+    (i)++;                                                                                                             \
+    assert((i) < argc)
 
-int main() {
-    Mesh mesh = parsePlyFile("meshes/test_sphere.ply");
+int main(int argc, const char *argv[]) {
+    const char *input_filename = "meshes/test_sphere.ply";
+    const char *output_filename = "DF_OUTPUT.ply";
+    float voxel_size = 0.05;
+    float band_size_scale = 12.0f;
+
+    for (int i = 0; i < argc; ++i) {
+        if (!strcmp(argv[i], "-i")) {
+            next_and_check(i);
+            input_filename = argv[i];
+        } else if (!strcmp(argv[i], "-o")) {
+            next_and_check(i);
+            output_filename = argv[i];
+        } else if (!strcmp(argv[i], "-v")) {
+            next_and_check(i);
+            voxel_size = (float) atof(argv[i]);
+        } else if (!strcmp(argv[i], "-band")) {
+            next_and_check(i);
+            band_size_scale = (float) atof(argv[i]);
+        }
+    }
+
+    Mesh mesh = parsePlyFile(input_filename);
 
     Box mesh_bounding = mesh.getExpandedBoundingBox();
     glm::vec3 bounding_size = mesh_bounding.getSize();
@@ -46,12 +68,13 @@ int main() {
                 glm::vec3 query_position = mesh_bounding.min + glm::vec3{x_index, y_index, z_index} * actual_voxel_size;
                 float distance = distance_query.queryDistance(query_position, glm::length(bounding_size) * 2);
 
-                if (distance > glm::length(bounding_size) / 12.0f) {
+                if (distance > glm::length(bounding_size) / band_size_scale) {
                     continue; // skip far away points
                 }
 
                 auto gray_scale = (glm::uint8) glm::clamp(
-                    std::round((1.0f - distance / (glm::length(bounding_size) / 12.0f)) * 255.0f), 0.0f, 255.0f);
+                    std::round((1.0f - distance / (glm::length(bounding_size) / band_size_scale)) * 255.0f), 0.0f,
+                    255.0f);
                 fmt::format_to(std::back_inserter(buffer), "{} {} {} {} {} {}\n", query_position.x, query_position.y,
                                query_position.z, gray_scale, gray_scale, gray_scale);
                 vertex_count++;
