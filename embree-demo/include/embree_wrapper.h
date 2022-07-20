@@ -57,7 +57,7 @@ class IntersectionContext : public RTCIntersectContext {
 public:
     IntersectionContext(Scene const &scene) : scene_{scene.scene_} { rtcInitIntersectContext(this); }
     RayHit emitRay(glm::vec3 const &origin, glm::vec3 const &direction,
-                   glm::vec2 const &near_far = {0, std::numeric_limits<float>::infinity()});
+                   glm::vec2 const &near_far = {0, std::numeric_limits<float>::max()});
     void emitRay(RayHit *rayhit) { rtcIntersect1(scene_, this, rayhit); }
 
 private:
