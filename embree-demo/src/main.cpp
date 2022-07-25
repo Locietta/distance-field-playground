@@ -44,8 +44,8 @@ int main(int argc, const char *argv[]) {
 
     Mesh mesh = parsePlyFile(input_filename);
 
-    Box mesh_bounding = mesh.getExpandedBoundingBox();
-    glm::vec3 bounding_size = mesh_bounding.getSize();
+    Box mesh_bound = mesh.getExpandedBoundingBox();
+    glm::vec3 bounding_size = mesh_bound.getSize();
 
     glm::uvec3 dimensions = glm::max(glm::round(bounding_size / voxel_size), 1.0f);
     glm::vec3 actual_voxel_size = bounding_size / (glm::vec3) dimensions;
@@ -55,19 +55,10 @@ int main(int argc, const char *argv[]) {
     embree_scene.setIndices(std::move(mesh.indices));
     embree_scene.commit();
 
-    // embree::RayHit rayhit = intersect.emitRay({0.25, 0.25, -1}, {0, 0, 1});
-
-    // if (rayhit.hit.geomID != RTC_INVALID_GEOMETRY_ID) {
-    //     fmt::print("[Ray intersection] Geo_ID: {}, distance: {:.2f}\n", rayhit.hit.geomID,
-    //     rayhit.ray.tfar);
-    // } else {
-    //     fmt::print("No ray intersection!\n");
-    // }
-
     // prepare for tracing consts
     std::vector<glm::vec3> sample_directions;
     {
-        const int num_voxel_distance_samples = 120;
+        const int num_voxel_distance_samples = 49;
         sample_directions = stratifiedUniformHemisphereSamples(num_voxel_distance_samples);
         std::vector<glm::vec3> other_half_samples = stratifiedUniformHemisphereSamples(num_voxel_distance_samples);
         for (const auto &other_half_sample : other_half_samples) {
@@ -77,7 +68,7 @@ int main(int argc, const char *argv[]) {
     const float trace_distance = band_size * 2;
 
     embree::IntersectionContext intersect{embree_scene};
-    embree::DistanceQueryContext distance_query{embree_scene};
+    embree::ClosestQueryContext distance_query{embree_scene};
 
     fmt::memory_buffer buffer;
     glm::uint vertex_count = 0;
@@ -85,9 +76,15 @@ int main(int argc, const char *argv[]) {
     for (glm::uint z_index = 0; z_index < dimensions.z; ++z_index) {
         for (glm::uint y_index = 0; y_index < dimensions.y; ++y_index) {
             for (glm::uint x_index = 0; x_index < dimensions.x; ++x_index) {
-                glm::vec3 query_position = mesh_bounding.min + glm::vec3{x_index, y_index, z_index} * actual_voxel_size;
-                glm::vec3 closest_position = distance_query.queryClosest(query_position, trace_distance);
-                // float distance = distance_query.queryDistance(query_position, glm::length(bounding_size) * 2);
+                const glm::vec3 query_position =
+                    mesh_bound.min + actual_voxel_size * glm::vec3{x_index, y_index, z_index};
+                const embree::ClosestQueryResult query_result = distance_query.query(query_position, trace_distance);
+
+                if (!query_result.valid) {
+                    continue; // skip invalid query
+                }
+
+                const glm::vec3 closest_position = query_result.closestPoint;
 
                 if (std::fabs(glm::length(query_position - closest_position) - display_distance) > band_size) {
                     continue; // skip far away points

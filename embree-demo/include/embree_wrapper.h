@@ -1,11 +1,9 @@
 #pragma once
 
-#include <algorithm>
 #include <embree3/rtcore.h>
 #include <embree3/rtcore_ray.h>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
-#include <utility>
 #include <vector>
 
 namespace embree {
@@ -51,7 +49,7 @@ class RayHit : public RTCRayHit {
 public:
     RayHit(glm::vec3 const &origin, glm::vec3 const &direction,
            glm::vec2 const &near_far = {0, std::numeric_limits<float>::infinity()});
-    
+
     [[nodiscard]] glm::vec3 getHitNormal() const;
 };
 
@@ -68,12 +66,25 @@ private:
     RTCScene const &scene_;
 };
 
-class DistanceQueryContext : public RTCPointQueryContext {
+class ClosestQueryResult {
 public:
-    DistanceQueryContext(Scene const &scene);
+    bool valid = false;
+    glm::vec3 closestPoint;
 
-    float queryDistance(glm::vec3 center, float radius);
-    glm::vec3 queryClosest(glm::vec3 center, float radius);
+    // not free lunch, will call `sqrt()`
+    [[nodiscard]] float getDistance() const;
+
+private:
+    friend class ClosestQueryContext;
+
+    float queryDistanceSq;
+};
+
+class ClosestQueryContext : public RTCPointQueryContext {
+public:
+    ClosestQueryContext(Scene const &scene);
+
+    ClosestQueryResult query(glm::vec3 center, float radius);
 
 private:
     static bool DistanceQueryFunc(RTCPointQueryFunctionArguments *args);
