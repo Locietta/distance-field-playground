@@ -51,13 +51,17 @@ class RayHit : public RTCRayHit {
 public:
     RayHit(glm::vec3 const &origin, glm::vec3 const &direction,
            glm::vec2 const &near_far = {0, std::numeric_limits<float>::infinity()});
+    
+    [[nodiscard]] glm::vec3 getHitNormal() const;
 };
 
 class IntersectionContext : public RTCIntersectContext {
 public:
     IntersectionContext(Scene const &scene) : scene_{scene.scene_} { rtcInitIntersectContext(this); }
+
     RayHit emitRay(glm::vec3 const &origin, glm::vec3 const &direction,
                    glm::vec2 const &near_far = {0, std::numeric_limits<float>::max()});
+
     void emitRay(RayHit *rayhit) { rtcIntersect1(scene_, this, rayhit); }
 
 private:
@@ -66,18 +70,15 @@ private:
 
 class DistanceQueryContext : public RTCPointQueryContext {
 public:
-    static bool DistanceQueryFunc(RTCPointQueryFunctionArguments *args);
-
-public:
-    DistanceQueryContext(Scene const &scene) : scene_{scene.scene_} {
-        rtcInitPointQueryContext(this);
-        mesh_geometry_ = scene.geo_.internal;
-        num_triangles_ = scene.geo_.indicesBuffer.size();
-    }
+    DistanceQueryContext(Scene const &scene);
 
     float queryDistance(glm::vec3 center, float radius);
+    glm::vec3 queryClosest(glm::vec3 center, float radius);
 
 private:
+    static bool DistanceQueryFunc(RTCPointQueryFunctionArguments *args);
+    static bool ClosestQueryFunc(RTCPointQueryFunctionArguments *args);
+
     RTCScene const &scene_;
     RTCGeometry mesh_geometry_;
     glm::uint32 num_triangles_;

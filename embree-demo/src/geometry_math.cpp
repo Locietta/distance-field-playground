@@ -1,6 +1,9 @@
 #include "geometry_math.h"
 #include <fmt/core.h>
+#include <glm/ext/scalar_constants.hpp>
 #include <glm/geometric.hpp>
+#include <glm/vec2.hpp>
+#include <random>
 #include <utility>
 
 Plane::Plane(glm::dvec3 const &point, glm::dvec3 const &normal)
@@ -73,4 +76,53 @@ glm::dvec3 closestPointOnTriangle(glm::dvec3 const &P, glm::dvec3 const &A, glm:
 
     // should be unreachable
     return P;
+}
+
+// ---------- random samples -----------
+
+std::random_device rd;
+std::mt19937 prng{rd()};
+std::uniform_real_distribution<float> real_dist(0, 1);
+
+glm::vec3 uniformHemisphereSamples(glm::vec2 uniforms) {
+    uniforms = uniforms * 2.0f - 1.0f;
+    if (uniforms == glm::vec2(0.0f)) {
+        return {0, 0, 0};
+    }
+
+    float r, theta;
+
+    if (std::fabs(uniforms.x) > std::fabs(uniforms.y)) {
+        r = uniforms.x;
+        theta = glm::pi<float>() / 4 * (uniforms.y / uniforms.x);
+    } else {
+        r = uniforms.y;
+        theta = glm::pi<float>() / 2 - glm::pi<float>() / 4 * (uniforms.x / uniforms.y);
+    }
+
+    const float U = r * std::cos(theta);
+    const float V = r * std::sin(theta);
+    const float r2 = r * r;
+
+    // map to hemisphere [P. Shirley, Kenneth Chiu; 1997; A Low Distortion Map Between Disk and Square]
+    return {U * std::sqrt(2 - r2), V * std::sqrt(2 - r2), 1.0f - r2};
+}
+
+std::vector<glm::vec3> stratifiedUniformHemisphereSamples(int num_samples) {
+    const auto num_samples_dim = (std::size_t) std::sqrt(num_samples);
+    std::vector<glm::vec3> res(num_samples_dim * num_samples_dim);
+
+    for (size_t x_index = 0; x_index < num_samples_dim; ++x_index) {
+        for (size_t y_index = 0; y_index < num_samples_dim; ++y_index) {
+            const float u1 = real_dist(prng);
+            const float u2 = real_dist(prng);
+
+            const float frac1 = ((float) x_index + u1) / (float) num_samples_dim;
+            const float frac2 = ((float) x_index + u2) / (float) num_samples_dim;
+
+            res[x_index * num_samples_dim + y_index] = uniformHemisphereSamples({frac1, frac2});
+        }
+    }
+
+    return res;
 }

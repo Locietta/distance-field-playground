@@ -90,6 +90,17 @@ RayHit::RayHit(glm::vec3 const &origin, glm::vec3 const &direction, glm::vec2 co
     ray.dir_z = direction.z;
 }
 
+glm::vec3 RayHit::getHitNormal() const {
+    const glm::vec3 hit_vec = {-hit.Ng_x, -hit.Ng_y, -hit.Ng_z};
+
+    const float unsafe_normal_epsilon = 1e-16f;
+    if (glm::dot(hit_vec, hit_vec) < unsafe_normal_epsilon) {
+        return {0, 0, 0};
+    }
+    
+    return glm::normalize(hit_vec);
+}
+
 /// private class
 class PointQuery : public RTCPointQuery {
 public:
@@ -101,6 +112,12 @@ public:
         radius = r;
     }
 };
+
+DistanceQueryContext::DistanceQueryContext(Scene const &scene) : scene_{scene.scene_} {
+    rtcInitPointQueryContext(this);
+    mesh_geometry_ = scene.geo_.internal;
+    num_triangles_ = scene.geo_.indicesBuffer.size();
+}
 
 bool DistanceQueryContext::DistanceQueryFunc(RTCPointQueryFunctionArguments *args) {
     const auto *Context = reinterpret_cast<const DistanceQueryContext *>(args->context);
@@ -152,4 +169,63 @@ float DistanceQueryContext::queryDistance(glm::vec3 center, float radius) {
     rtcPointQuery(scene_, &point_query, this, DistanceQueryFunc, &queryDistanceSq);
 
     return std::sqrt(queryDistanceSq);
+}
+
+struct ClosestQueryData {
+    float queryDistanceSq;
+    glm::vec3 closestPoint;
+};
+
+bool DistanceQueryContext::ClosestQueryFunc(RTCPointQueryFunctionArguments *args) {
+    const auto *Context = reinterpret_cast<const DistanceQueryContext *>(args->context);
+
+    assert(args->userPtr);
+    ClosestQueryData &ClosestQuery = *reinterpret_cast<ClosestQueryData *>(args->userPtr);
+
+    const std::uint32_t TriangleIndex = args->primID;
+    assert(TriangleIndex < Context->num_triangles_);
+
+    const auto *VertexBuffer =
+        (const glm::vec3 *) rtcGetGeometryBufferData(Context->mesh_geometry_, RTC_BUFFER_TYPE_VERTEX, 0);
+    const auto *IndexBuffer =
+        (const std::uint32_t *) rtcGetGeometryBufferData(Context->mesh_geometry_, RTC_BUFFER_TYPE_INDEX, 0);
+
+    const std::uint32_t I0 = IndexBuffer[TriangleIndex * 3 + 0];
+    const std::uint32_t I1 = IndexBuffer[TriangleIndex * 3 + 1];
+    const std::uint32_t I2 = IndexBuffer[TriangleIndex * 3 + 2];
+
+    const glm::vec3 V0 = VertexBuffer[I0];
+    const glm::vec3 V1 = VertexBuffer[I1];
+    const glm::vec3 V2 = VertexBuffer[I2];
+
+    const glm::vec3 QueryPosition(args->query->x, args->query->y, args->query->z);
+
+    const glm::vec3 ClosestPoint = closestPointOnTriangle(QueryPosition, V0, V1, V2);
+    const float QueryDistanceSq = glm::dot(ClosestPoint - QueryPosition, ClosestPoint - QueryPosition);
+
+    if (QueryDistanceSq < ClosestQuery.queryDistanceSq) {
+        ClosestQuery.queryDistanceSq = QueryDistanceSq;
+        ClosestQuery.closestPoint = ClosestPoint;
+
+        bool bShrinkQuery = true;
+
+        if (bShrinkQuery) {
+            args->query->radius = std::sqrt(QueryDistanceSq);
+            // Return true to indicate that the query radius has shrunk
+            return true;
+        }
+    }
+
+    // Return false to indicate that the query radius hasn't changed
+    return false;
+}
+
+glm::vec3 DistanceQueryContext::queryClosest(glm::vec3 center, float radius) {
+    PointQuery point_query{center, radius};
+    ClosestQueryData closest_query;
+    closest_query.queryDistanceSq = (2.0f * radius) * (2.0f * radius);
+
+    rtcPointQuery(scene_, &point_query, this, ClosestQueryFunc, &closest_query);
+
+    return closest_query.closestPoint;
 }

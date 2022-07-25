@@ -1,4 +1,5 @@
 #include "embree_wrapper.h"
+#include "geometry_math.h"
 #include "mesh.h"
 #include "ply_loader.h"
 
@@ -16,7 +17,9 @@ int main(int argc, const char *argv[]) {
     const char *input_filename = "meshes/test_sphere.ply";
     const char *output_filename = "DF_OUTPUT.ply";
     float voxel_size = 0.05;
-    float band_size_scale = 12.0f;
+    float band_size = 0.1f;
+    float display_distance = 0.0f;
+    bool outside_only = false;
 
     for (int i = 0; i < argc; ++i) {
         if (!strcmp(argv[i], "-i")) {
@@ -30,7 +33,12 @@ int main(int argc, const char *argv[]) {
             voxel_size = (float) atof(argv[i]);
         } else if (!strcmp(argv[i], "-band")) {
             next_and_check(i);
-            band_size_scale = (float) atof(argv[i]);
+            band_size = (float) atof(argv[i]);
+        } else if (!strcmp(argv[i], "-d")) {
+            next_and_check(i);
+            display_distance = (float) atof(argv[i]);
+        } else if (!strcmp(argv[i], "-outside")) {
+            outside_only = true;
         }
     }
 
@@ -47,7 +55,6 @@ int main(int argc, const char *argv[]) {
     embree_scene.setIndices(std::move(mesh.indices));
     embree_scene.commit();
 
-    // embree::IntersectionContext intersect{embree_scene};
     // embree::RayHit rayhit = intersect.emitRay({0.25, 0.25, -1}, {0, 0, 1});
 
     // if (rayhit.hit.geomID != RTC_INVALID_GEOMETRY_ID) {
@@ -57,6 +64,19 @@ int main(int argc, const char *argv[]) {
     //     fmt::print("No ray intersection!\n");
     // }
 
+    // prepare for tracing consts
+    std::vector<glm::vec3> sample_directions;
+    {
+        const int num_voxel_distance_samples = 120;
+        sample_directions = stratifiedUniformHemisphereSamples(num_voxel_distance_samples);
+        std::vector<glm::vec3> other_half_samples = stratifiedUniformHemisphereSamples(num_voxel_distance_samples);
+        for (const auto &other_half_sample : other_half_samples) {
+            sample_directions.emplace_back(other_half_sample.x, other_half_sample.y, -other_half_sample.z);
+        }
+    }
+    const float trace_distance = band_size * 2;
+
+    embree::IntersectionContext intersect{embree_scene};
     embree::DistanceQueryContext distance_query{embree_scene};
 
     fmt::memory_buffer buffer;
@@ -66,18 +86,46 @@ int main(int argc, const char *argv[]) {
         for (glm::uint y_index = 0; y_index < dimensions.y; ++y_index) {
             for (glm::uint x_index = 0; x_index < dimensions.x; ++x_index) {
                 glm::vec3 query_position = mesh_bounding.min + glm::vec3{x_index, y_index, z_index} * actual_voxel_size;
-                float distance = distance_query.queryDistance(query_position, glm::length(bounding_size) * 2);
+                glm::vec3 closest_position = distance_query.queryClosest(query_position, trace_distance);
+                // float distance = distance_query.queryDistance(query_position, glm::length(bounding_size) * 2);
 
-                if (distance > glm::length(bounding_size) / band_size_scale) {
+                if (std::fabs(glm::length(query_position - closest_position) - display_distance) > band_size) {
                     continue; // skip far away points
                 }
 
-                auto gray_scale = (glm::uint8) glm::clamp(
-                    std::round((1.0f - distance / (glm::length(bounding_size) / band_size_scale)) * 255.0f), 0.0f,
-                    255.0f);
+                if (outside_only) {
+                    int hit_back_count = 0;
+                    for (const glm::vec3 unit_ray_direction : sample_directions) {
+                        const float pullback_epsilon = 1e-4f;
+                        const glm::vec3 start_pos =
+                            query_position - pullback_epsilon * trace_distance * unit_ray_direction;
+                        const glm::vec3 end_pos = query_position + trace_distance * unit_ray_direction;
+
+                        // TODO: test ray intersect with bounding first
+                        embree::RayHit rayhit = intersect.emitRay(start_pos, end_pos);
+                        if (rayhit.hit.geomID != RTC_INVALID_GEOMETRY_ID &&
+                            rayhit.hit.primID != RTC_INVALID_GEOMETRY_ID) {
+                            const glm::vec3 hit_normal = rayhit.getHitNormal();
+                            if (glm::dot(unit_ray_direction, hit_normal) > 0) {
+                                hit_back_count++;
+                            }
+                        }
+                    }
+
+                    if (hit_back_count && hit_back_count > sample_directions.size() / 4) {
+                        // consider it inside if significant ray hit back
+                        continue; // skip inside points
+                    }
+                }
+
+                // auto gray_scale = (glm::uint8) glm::clamp(
+                //     std::round((1.0f - distance / (glm::length(bounding_size) / band_size_scale)) * 255.0f), 0.0f,
+                //     255.0f);
                 fmt::format_to(std::back_inserter(buffer), "{} {} {} {} {} {}\n", query_position.x, query_position.y,
-                               query_position.z, gray_scale, gray_scale, gray_scale);
-                vertex_count++;
+                               query_position.z, 255, 0, 0);
+                fmt::format_to(std::back_inserter(buffer), "{} {} {} {} {} {}\n", closest_position.x,
+                               closest_position.y, closest_position.z, 0, 0, 255);
+                vertex_count += 2;
             }
         }
     }
