@@ -3,4 +3,4 @@ build
 .cache
 .vscode
 DF_OUTPUT.ply
-*/*_res.ply
+*/*_res*.ply

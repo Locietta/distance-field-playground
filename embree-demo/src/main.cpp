@@ -96,10 +96,9 @@ int main(int argc, const char *argv[]) {
                         const float pullback_epsilon = 1e-4f;
                         const glm::vec3 start_pos =
                             query_position - pullback_epsilon * trace_distance * unit_ray_direction;
-                        const glm::vec3 end_pos = query_position + trace_distance * unit_ray_direction;
 
                         // TODO: test ray intersect with bounding first
-                        embree::RayHit rayhit = intersect.emitRay(start_pos, end_pos);
+                        embree::RayHit rayhit = intersect.emitRay(start_pos, unit_ray_direction, trace_distance);
                         if (rayhit.hit.geomID != RTC_INVALID_GEOMETRY_ID &&
                             rayhit.hit.primID != RTC_INVALID_GEOMETRY_ID) {
                             const glm::vec3 hit_normal = rayhit.getHitNormal();

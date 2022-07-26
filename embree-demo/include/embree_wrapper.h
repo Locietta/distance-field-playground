@@ -11,6 +11,7 @@ namespace embree {
 struct Geometry {
     std::vector<glm::uvec3> indicesBuffer;
     std::vector<glm::vec3> verticesBuffer;
+    std::vector<glm::vec3> faceNormalBuffer;
     RTCGeometry internal = nullptr;
 };
 
@@ -47,8 +48,7 @@ public:
 
 class RayHit : public RTCRayHit {
 public:
-    RayHit(glm::vec3 const &origin, glm::vec3 const &direction,
-           glm::vec2 const &near_far = {0, std::numeric_limits<float>::infinity()});
+    RayHit(glm::vec3 const &origin, glm::vec3 const &direction, float far);
 
     [[nodiscard]] glm::vec3 getHitNormal() const;
 };
@@ -57,8 +57,7 @@ class IntersectionContext : public RTCIntersectContext {
 public:
     IntersectionContext(Scene const &scene) : scene_{scene.scene_} { rtcInitIntersectContext(this); }
 
-    RayHit emitRay(glm::vec3 const &origin, glm::vec3 const &direction,
-                   glm::vec2 const &near_far = {0, std::numeric_limits<float>::max()});
+    RayHit emitRay(glm::vec3 const &origin, glm::vec3 const &direction, float far);
 
     void emitRay(RayHit *rayhit) { rtcIntersect1(scene_, this, rayhit); }
 

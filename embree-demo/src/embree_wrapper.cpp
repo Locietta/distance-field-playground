@@ -63,19 +63,19 @@ void Scene::commit() {
     rtcCommitScene(scene_);
 }
 
-RayHit IntersectionContext::emitRay(glm::vec3 const &origin, glm::vec3 const &direction, glm::vec2 const &near_far) {
-    RayHit rayhit{origin, direction, near_far};
+RayHit IntersectionContext::emitRay(glm::vec3 const &origin, glm::vec3 const &direction, float far) {
+    RayHit rayhit{origin, direction, far};
     rtcIntersect1(scene_, this, &rayhit);
     return rayhit;
 }
 
-RayHit::RayHit(glm::vec3 const &origin, glm::vec3 const &direction, glm::vec2 const &near_far) {
+RayHit::RayHit(glm::vec3 const &origin, glm::vec3 const &direction, float far) {
     hit.u = hit.v = 0;
     ray.time = 0;
     ray.mask = 0xFFFFFFFF;
 
-    ray.tnear = near_far[0];
-    ray.tfar = near_far[1];
+    ray.tnear = 0;
+    ray.tfar = far;
 
     hit.geomID = RTC_INVALID_GEOMETRY_ID;
     hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
@@ -91,7 +91,7 @@ RayHit::RayHit(glm::vec3 const &origin, glm::vec3 const &direction, glm::vec2 co
 }
 
 glm::vec3 RayHit::getHitNormal() const {
-    const glm::vec3 hit_vec = {-hit.Ng_x, -hit.Ng_y, -hit.Ng_z};
+    const glm::vec3 hit_vec = {hit.Ng_x, hit.Ng_y, hit.Ng_z};
 
     const float unsafe_normal_epsilon = 1e-16f;
     if (glm::dot(hit_vec, hit_vec) < unsafe_normal_epsilon) {
