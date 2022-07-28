@@ -20,6 +20,7 @@ int main(int argc, const char *argv[]) {
     float band_size = 0.1f;
     float display_distance = 0.0f;
     bool outside_only = false;
+    bool sample_mode = false;
 
     for (int i = 0; i < argc; ++i) {
         if (!strcmp(argv[i], "-i")) {
@@ -39,6 +40,8 @@ int main(int argc, const char *argv[]) {
             display_distance = (float) atof(argv[i]);
         } else if (!strcmp(argv[i], "-outside")) {
             outside_only = true;
+        } else if (!strcmp(argv[i], "-sample")) {
+            sample_mode = true;
         }
     }
 
@@ -90,7 +93,9 @@ int main(int argc, const char *argv[]) {
                     continue; // skip far away points
                 }
 
-                if (outside_only) {
+                bool inside_mesh = false;
+
+                if (!(sample_mode && !outside_only)) {
                     int hit_back_count = 0;
                     for (const glm::vec3 unit_ray_direction : sample_directions) {
                         const float pullback_epsilon = 1e-4f;
@@ -110,18 +115,28 @@ int main(int argc, const char *argv[]) {
 
                     if (hit_back_count && hit_back_count > sample_directions.size() / 4) {
                         // consider it inside if significant ray hit back
-                        continue; // skip inside points
+                        inside_mesh = true;
                     }
                 }
 
-                // auto gray_scale = (glm::uint8) glm::clamp(
-                //     std::round((1.0f - distance / (glm::length(bounding_size) / band_size_scale)) * 255.0f), 0.0f,
-                //     255.0f);
-                fmt::format_to(std::back_inserter(buffer), "{} {} {} {} {} {}\n", query_position.x, query_position.y,
-                               query_position.z, 255, 0, 0);
-                fmt::format_to(std::back_inserter(buffer), "{} {} {} {} {} {}\n", closest_position.x,
-                               closest_position.y, closest_position.z, 0, 0, 255);
-                vertex_count += 2;
+                if (outside_only && inside_mesh) continue; // skip points inside mesh
+
+                if (sample_mode) {
+                    fmt::format_to(std::back_inserter(buffer), "{} {} {} {} {} {}\n", query_position.x,
+                                   query_position.y, query_position.z, 255, 0, 0);
+                    fmt::format_to(std::back_inserter(buffer), "{} {} {} {} {} {}\n", closest_position.x,
+                                   closest_position.y, closest_position.z, 0, 0, 255);
+                    vertex_count += 2;
+                } else {
+                    auto gray_scale = (glm::uint8) glm::clamp(
+                        std::round((1.0f - query_result.getDistance() / band_size) * 255.0f), 0.0f, 255.0f);
+                    
+                    // shade sample points inside as blue, outside as gray
+                    fmt::format_to(std::back_inserter(buffer), "{} {} {} {} {} {}\n", query_position.x,
+                                   query_position.y, query_position.z, gray_scale, gray_scale,
+                                   inside_mesh ? 255 : gray_scale);
+                    vertex_count++;
+                }
             }
         }
     }
