@@ -6,8 +6,7 @@
 #include <random>
 #include <utility>
 
-Plane::Plane(glm::dvec3 const &point, glm::dvec3 const &normal)
-    : plane_point_(point), normal_{glm::normalize(normal)} {}
+Plane::Plane(glm::dvec3 const &point, glm::dvec3 const &normal) : plane_point_(point), normal_{glm::normalize(normal)} {}
 
 Plane::Plane(glm::dvec3 const &A, glm::dvec3 const &B, glm::dvec3 const &C)
     : plane_point_{A}, normal_{glm::normalize(glm::cross(B - A, C - B))} {}

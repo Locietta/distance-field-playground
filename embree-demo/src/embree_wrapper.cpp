@@ -27,8 +27,8 @@ constexpr int NumBufferVerts = 1; // Reserve extra space at the end of the array
 
 void Scene::setVertices(std::vector<glm::vec3> &&vertices) {
     geo_.verticesBuffer = std::move(vertices);
-    rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, geo_.verticesBuffer.data(),
-                               0, sizeof(glm::vec3), geo_.verticesBuffer.size());
+    rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, geo_.verticesBuffer.data(), 0,
+                               sizeof(glm::vec3), geo_.verticesBuffer.size());
 }
 
 void Scene::setVertices(const glm::vec3 *vertices, std::size_t buffer_size) {
@@ -36,14 +36,14 @@ void Scene::setVertices(const glm::vec3 *vertices, std::size_t buffer_size) {
     geo_.verticesBuffer.reserve(buffer_size);
     std::copy(vertices, vertices + buffer_size, std::back_inserter(geo_.verticesBuffer));
 
-    rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, geo_.verticesBuffer.data(),
-                               0, sizeof(glm::vec3), geo_.verticesBuffer.size());
+    rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, geo_.verticesBuffer.data(), 0,
+                               sizeof(glm::vec3), geo_.verticesBuffer.size());
 }
 
 void Scene::setIndices(std::vector<glm::uvec3> &&indices) {
     geo_.indicesBuffer = std::move(indices);
-    rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, geo_.indicesBuffer.data(), 0,
-                               sizeof(glm::uvec3), geo_.indicesBuffer.size());
+    rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, geo_.indicesBuffer.data(), 0, sizeof(glm::uvec3),
+                               geo_.indicesBuffer.size());
 }
 
 void Scene::setIndices(const glm::uvec3 *indices, std::size_t buffer_size) {
@@ -51,8 +51,8 @@ void Scene::setIndices(const glm::uvec3 *indices, std::size_t buffer_size) {
     geo_.indicesBuffer.reserve(buffer_size);
     std::copy(indices, indices + buffer_size, std::back_inserter(geo_.indicesBuffer));
 
-    rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, geo_.indicesBuffer.data(), 0,
-                               sizeof(glm::uvec3), geo_.indicesBuffer.size());
+    rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, geo_.indicesBuffer.data(), 0, sizeof(glm::uvec3),
+                               geo_.indicesBuffer.size());
 }
 
 void Scene::commit() {
@@ -132,10 +132,8 @@ bool ClosestQueryContext::ClosestQueryFunc(RTCPointQueryFunctionArguments *args)
     const std::uint32_t TriangleIndex = args->primID;
     assert(TriangleIndex < Context->num_triangles_);
 
-    const auto *VertexBuffer =
-        (const glm::vec3 *) rtcGetGeometryBufferData(Context->mesh_geometry_, RTC_BUFFER_TYPE_VERTEX, 0);
-    const auto *IndexBuffer =
-        (const std::uint32_t *) rtcGetGeometryBufferData(Context->mesh_geometry_, RTC_BUFFER_TYPE_INDEX, 0);
+    const auto *VertexBuffer = (const glm::vec3 *) rtcGetGeometryBufferData(Context->mesh_geometry_, RTC_BUFFER_TYPE_VERTEX, 0);
+    const auto *IndexBuffer = (const std::uint32_t *) rtcGetGeometryBufferData(Context->mesh_geometry_, RTC_BUFFER_TYPE_INDEX, 0);
 
     const std::uint32_t I0 = IndexBuffer[TriangleIndex * 3 + 0];
     const std::uint32_t I1 = IndexBuffer[TriangleIndex * 3 + 1];
