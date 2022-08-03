@@ -21,7 +21,7 @@ public:
 
     ~Scene();
 
-    void setVertices(std::vector<glm::vec3> &&vertices);
+    void setVertices(std::vector<glm::vec3> const &vertices);
 
     void setVertices(const glm::vec3 *vertices, std::size_t buffer_size);
 
@@ -30,7 +30,7 @@ public:
         setVertices(vertices, N);
     }
 
-    void setIndices(std::vector<glm::uvec3> &&indices);
+    void setIndices(std::vector<glm::uvec3> const &indices);
 
     void setIndices(const glm::uvec3 *indices, std::size_t buffer_size);
 
@@ -51,6 +51,7 @@ public:
     RayHit(glm::vec3 const &origin, glm::vec3 const &direction, float far);
 
     [[nodiscard]] glm::vec3 getHitNormal() const;
+    [[nodiscard]] bool isValidHit() const { return hit.geomID != RTC_INVALID_GEOMETRY_ID && hit.primID != RTC_INVALID_GEOMETRY_ID; }
 };
 
 class IntersectionContext : public RTCIntersectContext {
@@ -67,7 +68,7 @@ private:
 
 class ClosestQueryResult {
 public:
-    bool valid = false;
+    // bool valid = false;
     glm::vec3 closestPoint;
 
     // not free lunch, will call `sqrt()`
@@ -85,8 +86,9 @@ public:
 
     ClosestQueryResult query(glm::vec3 center, float radius);
 
+    float queryDistance(glm::vec3 center, float radius) { return query(center, radius).getDistance(); }
+
 private:
-    static bool DistanceQueryFunc(RTCPointQueryFunctionArguments *args);
     static bool ClosestQueryFunc(RTCPointQueryFunctionArguments *args);
 
     RTCScene const &scene_;

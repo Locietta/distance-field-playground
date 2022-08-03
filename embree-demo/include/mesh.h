@@ -14,6 +14,10 @@ struct Box {
     glm::vec3 max;
 
     [[nodiscard]] glm::vec3 getSize() const { return max - min; }
+    [[nodiscard]] glm::vec3 getExtent() const { return (max - min) * 0.5f; }
+    [[nodiscard]] glm::vec3 getCenter() const { return (max + min) * 0.5f; }
+
+    [[nodiscard]] Box expandBy(glm::vec3 size) const { return {min - size, max + size}; }
 };
 
 struct Mesh {
@@ -21,6 +25,6 @@ struct Mesh {
     std::vector<glm::uvec3> indices;
     std::vector<glm::vec3> faceNormal;
 
+    [[nodiscard]] Box getAABB() const;
     [[nodiscard]] Box getExpandedBoundingBox() const;
 };
-

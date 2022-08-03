@@ -25,8 +25,8 @@ Scene::~Scene() {
 constexpr int NumBufferVerts = 1; // Reserve extra space at the end of the array, as embree has an internal bug where
                                   // they read and discard 4 bytes off the end of the array
 
-void Scene::setVertices(std::vector<glm::vec3> &&vertices) {
-    geo_.verticesBuffer = std::move(vertices);
+void Scene::setVertices(std::vector<glm::vec3> const &vertices) {
+    geo_.verticesBuffer = vertices;
     rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, geo_.verticesBuffer.data(), 0,
                                sizeof(glm::vec3), geo_.verticesBuffer.size());
 }
@@ -40,8 +40,8 @@ void Scene::setVertices(const glm::vec3 *vertices, std::size_t buffer_size) {
                                sizeof(glm::vec3), geo_.verticesBuffer.size());
 }
 
-void Scene::setIndices(std::vector<glm::uvec3> &&indices) {
-    geo_.indicesBuffer = std::move(indices);
+void Scene::setIndices(std::vector<glm::uvec3> const &indices) {
+    geo_.indicesBuffer = indices;
     rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, geo_.indicesBuffer.data(), 0, sizeof(glm::uvec3),
                                geo_.indicesBuffer.size());
 }
@@ -152,7 +152,7 @@ bool ClosestQueryContext::ClosestQueryFunc(RTCPointQueryFunctionArguments *args)
         ClosestQuery.queryDistanceSq = QueryDistanceSq;
         ClosestQuery.closestPoint = ClosestPoint;
 
-        ClosestQuery.valid = true;
+        // ClosestQuery.valid = true;
         bool bShrinkQuery = true;
 
         if (bShrinkQuery) {
@@ -169,7 +169,7 @@ bool ClosestQueryContext::ClosestQueryFunc(RTCPointQueryFunctionArguments *args)
 ClosestQueryResult ClosestQueryContext::query(glm::vec3 center, float radius) {
     PointQuery point_query{center, radius};
     ClosestQueryResult closest_query;
-    closest_query.queryDistanceSq = (2.0f * radius) * (2.0f * radius);
+    closest_query.queryDistanceSq = radius * radius;
 
     rtcPointQuery(scene_, &point_query, this, ClosestQueryFunc, &closest_query);
 

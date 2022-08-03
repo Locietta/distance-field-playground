@@ -4,6 +4,6 @@
 
 Build distance field for ply model, and export visualization result. You can view the model and result in [meshlab](http://www.meshlab.net). 
 
-Dependencies: [embree](https://www.embree.org/), glm, fmt
-
 Build with [xmake](https://xmake.io/#/zh-cn/).
+
+Dependencies: [embree](https://www.embree.org/), tbb, glm, fmt
