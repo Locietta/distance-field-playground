@@ -4,7 +4,9 @@
 #include "geometry_math.h"
 #include "mesh.h"
 
+#include <chrono>
 #include <execution>
+#include <fmt/core.h>
 #include <glm/geometric.hpp>
 
 constexpr glm::uint8 MAX_UINT8 = std::numeric_limits<glm::uint8>::max();
@@ -93,6 +95,11 @@ extern ArgParser &arg_parser;
 
 void generateDistanceFieldVolumeData(Mesh const &mesh, Box localSpaceMeshBounds, float distanceFieldResolutionScale,
                                      DistanceFieldVolumeData &outData) {
+
+    if (distanceFieldResolutionScale <= 0) return; // sanity check
+
+    auto start_time = std::chrono::steady_clock::now();
+
     embree::Scene embree_scene;
     embree_scene.setVertices(mesh.vertices);
     embree_scene.setIndices(mesh.indices);
@@ -236,10 +243,16 @@ void generateDistanceFieldVolumeData(Mesh const &mesh, Box localSpaceMeshBounds,
 
         out_mip.volumeToVirtualUVScale = virtual_UV_size / (2.0f * volume_space_extent);
         out_mip.volumeToVirtualUVAdd = volume_space_extent * out_mip.volumeToVirtualUVScale + virtual_UV_min;
+        fmt::print("Mip level {} compression: {}/{}\n", mip_index, valid_bricks.size(), brick_tasks.size());
     }
 
     outData.localSpaceMeshBounds = localSpaceMeshBounds;
     outData.streamableMips = std::move(streamable_mip_data); // XXX: should use streaming bulk in Chaos
-    
-    // TODO: log build time
+
+    auto end_time = std::chrono::steady_clock::now();
+    fmt::print("Finished distance field build in {:.1f}s - {}x{}x{} sparse distance field.\n",
+               std::chrono::duration<double>(end_time - start_time).count(),
+               mip0_indirection_dimensions.x * DistanceField::UniqueDataBrickSize,
+               mip0_indirection_dimensions.y * DistanceField::UniqueDataBrickSize,
+               mip0_indirection_dimensions.z * DistanceField::UniqueDataBrickSize);
 }

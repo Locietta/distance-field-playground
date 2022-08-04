@@ -16,6 +16,8 @@
 constexpr glm::uint8 MAX_UINT8 = std::numeric_limits<glm::uint8>::max();
 constexpr glm::uint8 MIN_UINT8 = std::numeric_limits<glm::uint8>::min();
 
+void writePlyFile(const char *filename, fmt::memory_buffer const &vertexDescs, glm::uint vertexCount);
+
 ArgParser &arg_parser = ArgParser::getInstance();
 
 int main(int argc, const char *argv[]) {
@@ -31,8 +33,11 @@ int main(int argc, const char *argv[]) {
     Box const &mesh_bounds = volume_data.localSpaceMeshBounds;
 
     fmt::memory_buffer buffer;
+    fmt::memory_buffer buffer_invalid_brick; // for visualization of invalid brick
+
     for (int mip_index = 0; mip_index < DistanceField::NumMips; ++mip_index) {
         glm::uint vertex_count = 0;
+        glm::uint vertex_count_invalid_brick = 0;
 
         SparseDistanceFieldMip const &mip = volume_data.mips[mip_index];
 
@@ -67,12 +72,9 @@ int main(int argc, const char *argv[]) {
         for (glm::uint position_index = 0; position_index < indirection_table_size; ++position_index) {
             const glm::uint32 brick_offset = indirection_table[position_index];
 
-            glm::vec3 display_color;
-            if (brick_offset == DistanceField::InvalidBrickIndex) {
-                display_color = glm::vec3(0, 0, 0);
-            } else {
-                display_color = glm::vec3(200, 200, 200);
-            }
+            bool is_valid_brick = brick_offset != DistanceField::InvalidBrickIndex;
+            glm::vec3 display_color = is_valid_brick ? glm::vec3(200, 200, 200) : glm::vec3(0, 0, 0);
+            fmt::memory_buffer &visual_buffer = is_valid_brick ? buffer : buffer_invalid_brick;
 
             const glm::uvec3 brick_coordinate{
                 position_index % dimensions.x,
@@ -90,26 +92,37 @@ int main(int argc, const char *argv[]) {
 
                 const glm::vec3 sample_position = glm::vec3(voxel_coordinate) * distance_field_voxel_size + brick_min_position;
 
-                fmt::format_to(std::back_inserter(buffer), "{} {}\n", sample_position, display_color);
+                fmt::format_to(std::back_inserter(visual_buffer), "{} {}\n", sample_position, display_color);
             }
-            vertex_count += brick_size;
+
+            if (is_valid_brick) {
+                vertex_count += brick_size;
+            } else {
+                vertex_count_invalid_brick += brick_size;
+            }
         }
 
-        // ------------------------------ write PLY file --------------------------------
-        FILE *output_file = nullptr;
-        fopen_s(&output_file, fmt::format("{}{}.ply", arg_parser.output_filename, mip_index).c_str(), "w+");
-        if (output_file == nullptr) fmt::print(stderr, "Failed to open output file!\n");
-
-        // write ply header
-        fmt::print(output_file, "ply\nformat ascii 1.0\n");
-        fmt::print(output_file, "element vertex {}\n", vertex_count);
-        fmt::print(output_file, "property float x\nproperty float y\nproperty float z\n");
-        fmt::print(output_file, "property uchar red\nproperty uchar green\nproperty uchar blue\n");
-        fmt::print(output_file, "end_header\n");
-        // write vertices
-        fmt::print(output_file, "{}", fmt::to_string(buffer));
-
-        std::fclose(output_file);
+        writePlyFile(fmt::format("{}{}_valid_bricks.ply", arg_parser.output_filename, mip_index).c_str(), buffer, vertex_count);
+        writePlyFile(fmt::format("{}{}_invalid_bricks.ply", arg_parser.output_filename, mip_index).c_str(), buffer_invalid_brick,
+                     vertex_count_invalid_brick);
+        
         buffer.clear();
+        buffer_invalid_brick.clear();
     }
+}
+
+void writePlyFile(const char *filename, fmt::memory_buffer const &vertex_descs, glm::uint vertex_count) {
+    FILE *output_file = nullptr;
+    fopen_s(&output_file, filename, "w+");
+    if (output_file == nullptr) fmt::print(stderr, "Failed to open {}\n", filename);
+
+    // write ply header
+    fmt::print(output_file, "ply\nformat ascii 1.0\n");
+    fmt::print(output_file, "element vertex {}\n", vertex_count);
+    fmt::print(output_file, "property float x\nproperty float y\nproperty float z\n");
+    fmt::print(output_file, "property uchar red\nproperty uchar green\nproperty uchar blue\n");
+    fmt::print(output_file, "end_header\n");
+    // write vertices
+    fmt::print(output_file, "{}", fmt::to_string(vertex_descs));
+    std::fclose(output_file);
 }
