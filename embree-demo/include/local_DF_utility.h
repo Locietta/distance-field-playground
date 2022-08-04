@@ -75,7 +75,8 @@ public:
 
     std::vector<glm::uint8> alwaysLoadedMip;
 
-    // streamableMips
+    // TODO: need to switch to streaming bulk in Chaos
+    std::vector<glm::uint8> streamableMips;
 };
 
 /// NOTE: part of FMeshUtilities in ue5

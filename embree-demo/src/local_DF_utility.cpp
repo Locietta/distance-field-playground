@@ -83,6 +83,12 @@ inline glm::uint computeLinearVoxelIndex(glm::uvec3 voxelCoordinate, glm::uvec3 
     return (voxelCoordinate.z * volumeDimensions.y + voxelCoordinate.y) * volumeDimensions.x + voxelCoordinate.x;
 }
 
+/// XXX: C++20 concept
+template <std::integral T>
+T divideAndRoundUp(T dividend, T divisor) {
+    return (dividend + divisor - 1) / divisor;
+}
+
 extern ArgParser &arg_parser;
 
 void generateDistanceFieldVolumeData(Mesh const &mesh, Box localSpaceMeshBounds, float distanceFieldResolutionScale,
@@ -110,7 +116,7 @@ void generateDistanceFieldVolumeData(Mesh const &mesh, Box localSpaceMeshBounds,
     }
 
     {
-        /// NOTE: should expand bounds for 2-sided material
+        /// NOTE: expand bounds for 2-sided material
     }
 
     const float local_to_volume_scale = 1.0f / maxComponent(localSpaceMeshBounds.getExtent());
@@ -122,100 +128,118 @@ void generateDistanceFieldVolumeData(Mesh const &mesh, Box localSpaceMeshBounds,
     const glm::uvec3 mip0_indirection_dimensions =
         glm::clamp((glm::uvec3) glm::round(desired_dimensions), 1u, DistanceField::MaxIndirectionDimension);
 
-    // TODO: mip? mip loop should start here
-    const glm::uvec3 indirection_dimensions = mip0_indirection_dimensions;
+    std::vector<glm::uint8> streamable_mip_data;
 
-    const glm::vec3 texel_size = localSpaceMeshBounds.getSize() / glm::vec3(indirection_dimensions * DistanceField::UniqueDataBrickSize -
-                                                                            2 * DistanceField::MeshDistanceFieldObjectBorder);
-    const Box distance_field_volume_bounds = localSpaceMeshBounds.expandBy(texel_size);
-    const glm::vec3 indirection_voxel_size = distance_field_volume_bounds.getSize() / glm::vec3(indirection_dimensions);
+    for (int mip_index = 0; mip_index < DistanceField::NumMips; ++mip_index) {
+        const glm::uvec3 indirection_dimensions{
+            divideAndRoundUp(mip0_indirection_dimensions.x, 1u << mip_index),
+            divideAndRoundUp(mip0_indirection_dimensions.y, 1u << mip_index),
+            divideAndRoundUp(mip0_indirection_dimensions.z, 1u << mip_index),
+        };
 
-    const float distance_field_voxel_size = glm::length(indirection_voxel_size) / DistanceField::UniqueDataBrickSize;
-    const float local_space_trace_distance = distance_field_voxel_size * DistanceField::BandSizeInVoxels;
-    const float volume_space_max_encoding = local_space_trace_distance * local_to_volume_scale;
+        const glm::vec3 texel_size =
+            localSpaceMeshBounds.getSize() /
+            glm::vec3(indirection_dimensions * DistanceField::UniqueDataBrickSize - 2 * DistanceField::MeshDistanceFieldObjectBorder);
+        const Box distance_field_volume_bounds = localSpaceMeshBounds.expandBy(texel_size);
+        const glm::vec3 indirection_voxel_size = distance_field_volume_bounds.getSize() / glm::vec3(indirection_dimensions);
 
-    std::vector<DistanceFieldBrickTask> brick_tasks;
-    brick_tasks.reserve(indirection_dimensions.x * indirection_dimensions.y * indirection_dimensions.z / 8);
+        const float distance_field_voxel_size = glm::length(indirection_voxel_size) / DistanceField::UniqueDataBrickSize;
+        const float local_space_trace_distance = distance_field_voxel_size * DistanceField::BandSizeInVoxels;
+        const float volume_space_max_encoding = local_space_trace_distance * local_to_volume_scale;
 
-    for (glm::uint z_index = 0; z_index < indirection_dimensions.z; ++z_index) {
-        for (glm::uint y_index = 0; y_index < indirection_dimensions.y; ++y_index) {
-            for (glm::uint x_index = 0; x_index < indirection_dimensions.x; ++x_index) {
-                brick_tasks.emplace_back(embree_scene, sample_directions, local_space_trace_distance, distance_field_volume_bounds,
-                                         glm::uvec3{x_index, y_index, z_index}, indirection_voxel_size);
+        std::vector<DistanceFieldBrickTask> brick_tasks;
+        brick_tasks.reserve(indirection_dimensions.x * indirection_dimensions.y * indirection_dimensions.z / 8);
+
+        for (glm::uint z_index = 0; z_index < indirection_dimensions.z; ++z_index) {
+            for (glm::uint y_index = 0; y_index < indirection_dimensions.y; ++y_index) {
+                for (glm::uint x_index = 0; x_index < indirection_dimensions.x; ++x_index) {
+                    brick_tasks.emplace_back(embree_scene, sample_directions, local_space_trace_distance, distance_field_volume_bounds,
+                                             glm::uvec3{x_index, y_index, z_index}, indirection_voxel_size);
+                }
             }
         }
-    }
 
-    if (arg_parser.parallel) {
-        std::for_each(std::execution::par_unseq, brick_tasks.begin(), brick_tasks.end(),
-                      [](DistanceFieldBrickTask &task) { task.doWork(); });
+        // XXX: use Async task mechanism in Chaos for parallel-for, if available
+        if (arg_parser.parallel) {
+            std::for_each(std::execution::par_unseq, brick_tasks.begin(), brick_tasks.end(),
+                          [](DistanceFieldBrickTask &task) { task.doWork(); });
 
-    } else {
-        std::for_each(brick_tasks.begin(), brick_tasks.end(), [](DistanceFieldBrickTask &task) { task.doWork(); });
-    }
-
-    SparseDistanceFieldMip &out_mip = outData.mips[0];
-    std::vector<glm::uint32> indirection_table;
-    indirection_table.resize((std::size_t) indirection_dimensions.x * indirection_dimensions.y * indirection_dimensions.z,
-                             DistanceField::InvalidBrickIndex);
-
-    std::vector<DistanceFieldBrickTask *> valid_bricks;
-    valid_bricks.reserve(brick_tasks.size());
-
-    for (auto &brick_task : brick_tasks) {
-        if (brick_task.brickMaxDistance > MIN_UINT8 && brick_task.brickMinDistance < MAX_UINT8) {
-            valid_bricks.push_back(&brick_task);
+        } else {
+            std::for_each(brick_tasks.begin(), brick_tasks.end(), [](DistanceFieldBrickTask &task) { task.doWork(); });
         }
-    }
 
-    const glm::uint num_bricks = valid_bricks.size();
-    const glm::uint brick_size_bytes =
-        DistanceField::BrickSize * DistanceField::BrickSize * DistanceField::BrickSize * 1; // GPixelFormats[G8].BlockBytes == 1
+        SparseDistanceFieldMip &out_mip = outData.mips[mip_index];
+        std::vector<glm::uint32> indirection_table;
+        indirection_table.resize((std::size_t) indirection_dimensions.x * indirection_dimensions.y * indirection_dimensions.z,
+                                 DistanceField::InvalidBrickIndex);
 
-    std::vector<glm::uint8> distance_field_brick_data;
-    /// NOTE: un-inited in UE5
-    distance_field_brick_data.resize((std::size_t) num_bricks * brick_size_bytes);
+        std::vector<DistanceFieldBrickTask *> valid_bricks;
+        valid_bricks.reserve(brick_tasks.size());
 
-    for (std::size_t brick_index = 0; brick_index < valid_bricks.size(); ++brick_index) {
-        const DistanceFieldBrickTask &brick = *valid_bricks[brick_index];
-        const glm::uint indirection_index = computeLinearVoxelIndex(brick.brickCoordinate, indirection_dimensions);
-        indirection_table[indirection_index] = brick_index;
-
-        assert(brick_size_bytes == brick.distanceFieldVolume.size() * elementSize(brick.distanceFieldVolume));
-        std::memcpy(&distance_field_brick_data[brick_index * brick_size_bytes], brick.distanceFieldVolume.data(), brick_size_bytes);
-    }
-
-    const glm::uint indirection_table_bytes = indirection_table.size() * elementSize(indirection_table);
-    const glm::uint mip_data_bytes = indirection_table_bytes + distance_field_brick_data.size();
-
-    { // always loaded
-        outData.alwaysLoadedMip.resize(mip_data_bytes);
-
-        std::memcpy(&outData.alwaysLoadedMip[0], indirection_table.data(), indirection_table_bytes);
-        if (distance_field_brick_data.size() > 0) {
-            std::memcpy(&outData.alwaysLoadedMip[indirection_table_bytes], distance_field_brick_data.data(),
-                        distance_field_brick_data.size());
+        for (auto &brick_task : brick_tasks) {
+            if (brick_task.brickMaxDistance > MIN_UINT8 && brick_task.brickMinDistance < MAX_UINT8) {
+                valid_bricks.push_back(&brick_task);
+            }
         }
+
+        const glm::uint num_bricks = valid_bricks.size();
+        const glm::uint brick_size_bytes =
+            DistanceField::BrickSize * DistanceField::BrickSize * DistanceField::BrickSize * 1; // GPixelFormats[G8].BlockBytes == 1
+
+        std::vector<glm::uint8> distance_field_brick_data;
+        /// XXX: un-inited in UE5, vector<T>::resize will do zero-init
+        distance_field_brick_data.resize((std::size_t) num_bricks * brick_size_bytes);
+
+        for (std::size_t brick_index = 0; brick_index < valid_bricks.size(); ++brick_index) {
+            const DistanceFieldBrickTask &brick = *valid_bricks[brick_index];
+            const glm::uint indirection_index = computeLinearVoxelIndex(brick.brickCoordinate, indirection_dimensions);
+            indirection_table[indirection_index] = brick_index;
+
+            assert(brick_size_bytes == brick.distanceFieldVolume.size() * elementSize(brick.distanceFieldVolume));
+            std::memcpy(&distance_field_brick_data[brick_index * brick_size_bytes], brick.distanceFieldVolume.data(), brick_size_bytes);
+        }
+
+        const glm::uint indirection_table_bytes = indirection_table.size() * elementSize(indirection_table);
+        const glm::uint mip_data_bytes = indirection_table_bytes + distance_field_brick_data.size();
+
+        if (mip_index == DistanceField::NumMips - 1) {
+            outData.alwaysLoadedMip.resize(mip_data_bytes);
+
+            std::memcpy(&outData.alwaysLoadedMip[0], indirection_table.data(), indirection_table_bytes);
+            if (distance_field_brick_data.size() > 0) {
+                std::memcpy(&outData.alwaysLoadedMip[indirection_table_bytes], distance_field_brick_data.data(),
+                            distance_field_brick_data.size());
+            }
+        } else {
+            out_mip.bulkOffset = streamable_mip_data.size();
+            streamable_mip_data.resize(streamable_mip_data.size() + mip_data_bytes);
+            out_mip.bulkSize = mip_data_bytes;
+
+            std::memcpy(&streamable_mip_data[out_mip.bulkOffset], indirection_table.data(), indirection_table_bytes);
+            if (distance_field_brick_data.size() > 0) {
+                std::memcpy(&streamable_mip_data[out_mip.bulkOffset + indirection_table_bytes], distance_field_brick_data.data(),
+                            distance_field_brick_data.size());
+            }
+        }
+
+        out_mip.indirectionDimensions = indirection_dimensions;
+        out_mip.distanceFieldToVolumeScaleBias = glm::vec2{2 * volume_space_max_encoding, -volume_space_max_encoding};
+        out_mip.numDistanceFieldBricks = num_bricks;
+
+        const glm::vec3 virtual_UV_min = glm::vec3(DistanceField::MeshDistanceFieldObjectBorder) /
+                                         glm::vec3(indirection_dimensions * DistanceField::UniqueDataBrickSize);
+        const glm::vec3 virtual_UV_size =
+            glm::vec3(indirection_dimensions * DistanceField::UniqueDataBrickSize - 2 * DistanceField::MeshDistanceFieldObjectBorder) /
+            glm::vec3(indirection_dimensions * DistanceField::UniqueDataBrickSize);
+
+        const glm::vec3 volume_space_extent = localSpaceMeshBounds.getExtent() * local_to_volume_scale;
+
+        out_mip.volumeToVirtualUVScale = virtual_UV_size / (2.0f * volume_space_extent);
+        out_mip.volumeToVirtualUVAdd = volume_space_extent * out_mip.volumeToVirtualUVScale + virtual_UV_min;
     }
-
-    // TODO: other 2 level of mips is streamed
-
-    out_mip.indirectionDimensions = indirection_dimensions;
-    out_mip.distanceFieldToVolumeScaleBias = glm::vec2{2 * volume_space_max_encoding, -volume_space_max_encoding};
-    out_mip.numDistanceFieldBricks = num_bricks;
-
-    const glm::vec3 virtual_UV_min =
-        glm::vec3(DistanceField::MeshDistanceFieldObjectBorder) / glm::vec3(indirection_dimensions * DistanceField::UniqueDataBrickSize);
-    const glm::vec3 virtual_UV_size =
-        glm::vec3(indirection_dimensions * DistanceField::UniqueDataBrickSize - 2 * DistanceField::MeshDistanceFieldObjectBorder) /
-        glm::vec3(indirection_dimensions * DistanceField::UniqueDataBrickSize);
-
-    const glm::vec3 volume_space_extent = localSpaceMeshBounds.getExtent() * local_to_volume_scale;
-
-    out_mip.volumeToVirtualUVScale = virtual_UV_size / (2.0f * volume_space_extent);
-    out_mip.volumeToVirtualUVAdd = volume_space_extent * out_mip.volumeToVirtualUVScale + virtual_UV_min;
-
-    /// NOTE: mip loop end here
 
     outData.localSpaceMeshBounds = localSpaceMeshBounds;
+    outData.streamableMips = std::move(streamable_mip_data); // XXX: should use streaming bulk in Chaos
+    
+    // TODO: log build time
 }
