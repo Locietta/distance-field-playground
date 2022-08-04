@@ -5,7 +5,12 @@ set_languages("cxx20")
 
 -- include toolchains
 includes("toolchains/*.lua")
-set_toolchains("clang-cl")
+
+if is_os("windows") then
+    set_toolchains("clang-cl")
+else
+    set_toolchains("clang")
+end
 
 -- include subprojects
 includes("*/xmake.lua")

@@ -112,8 +112,7 @@ int main(int argc, const char *argv[]) {
 }
 
 void writePlyFile(const char *filename, fmt::memory_buffer const &vertex_descs, glm::uint vertex_count) {
-    FILE *output_file = nullptr;
-    fopen_s(&output_file, filename, "w+");
+    FILE *output_file = fopen(filename, "w+");
     if (output_file == nullptr) fmt::print(stderr, "Failed to open {}\n", filename);
 
     // write ply header
