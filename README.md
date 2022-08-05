@@ -16,4 +16,4 @@ Dependencies: [embree](https://www.embree.org/), tbb, glm, fmt
 
 ### Sparse Storage in Bricks
 
-<img src="https://user-images.githubusercontent.com/53137814/182846414-b27c0416-714e-4f57-974d-b2d236f148bf.png" alt="image" style="zoom:50%;" />
+![image](https://user-images.githubusercontent.com/53137814/183001680-53881e36-cecf-4b04-80e2-9acebc98102d.png)
