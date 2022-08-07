@@ -6,6 +6,7 @@
 #include "ply_loader.h"
 
 #include "format.hpp"
+#include <chrono>
 #include <fmt/core.h>
 #include <glm/common.hpp>
 
@@ -23,12 +24,18 @@ ArgParser &arg_parser = ArgParser::getInstance();
 int main(int argc, const char *argv[]) {
     arg_parser.parseCommandLine(argc, argv);
 
+    auto read_start_time = std::chrono::system_clock::now();
     Mesh mesh = parsePlyFile(arg_parser.input_filename);
+    auto read_end_time = std::chrono::system_clock::now();
+    fmt::print("Read PLY model '{}' in {:.1f}s.\n", arg_parser.input_filename,
+               std::chrono::duration<double>(read_end_time - read_start_time).count());
 
     DistanceFieldVolumeData volume_data;
     generateDistanceFieldVolumeData(mesh, mesh.getAABB(), arg_parser.DF_resolution_scale, volume_data);
 
     /// visualization for mips
+
+    auto write_start_time = std::chrono::system_clock::now();
 
     Box const &mesh_bounds = volume_data.localSpaceMeshBounds;
 
@@ -105,10 +112,13 @@ int main(int argc, const char *argv[]) {
         writePlyFile(fmt::format("{}{}_valid_bricks.ply", arg_parser.output_filename, mip_index).c_str(), buffer, vertex_count);
         writePlyFile(fmt::format("{}{}_invalid_bricks.ply", arg_parser.output_filename, mip_index).c_str(), buffer_invalid_brick,
                      vertex_count_invalid_brick);
-        
+
         buffer.clear();
         buffer_invalid_brick.clear();
     }
+
+    auto write_end_time = std::chrono::system_clock::now();
+    fmt::print("Write results in {:.1f}s.\n", std::chrono::duration<double>(read_end_time - read_start_time).count());
 }
 
 void writePlyFile(const char *filename, fmt::memory_buffer const &vertex_descs, glm::uint vertex_count) {
