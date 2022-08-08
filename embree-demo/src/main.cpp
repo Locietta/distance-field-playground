@@ -8,6 +8,7 @@
 #include "format.hpp"
 #include <chrono>
 #include <fmt/core.h>
+#include <fstream>
 #include <glm/common.hpp>
 
 #define next_and_check(i)                                                                                                                  \
@@ -119,6 +120,15 @@ int main(int argc, const char *argv[]) {
 
     auto write_end_time = std::chrono::system_clock::now();
     fmt::print("Write results in {:.1f}s.\n", std::chrono::duration<double>(read_end_time - read_start_time).count());
+
+    auto serialize_start_time = std::chrono::steady_clock::now();
+
+    // serialize to binary file
+    std::ofstream fout{fmt::format("{}.bin", arg_parser.output_filename), std::ios_base::binary};
+    DistanceFieldVolumeData::serialize(fout, volume_data);
+
+    auto serialize_end_time = std::chrono::steady_clock::now();
+    fmt::print("Write results in {:.1f}s.\n", std::chrono::duration<double>(serialize_start_time - serialize_end_time).count());
 }
 
 void writePlyFile(const char *filename, fmt::memory_buffer const &vertex_descs, glm::uint vertex_count) {

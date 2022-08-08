@@ -5,6 +5,8 @@
 #include <array>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <ostream>
+#include <istream>
 #include <vector>
 
 namespace DistanceField {
@@ -69,14 +71,17 @@ class DistanceFieldVolumeData {
 public:
     Box localSpaceMeshBounds;
 
-    bool bMostlyTwoSided;
+    // bool bMostlyTwoSided;
 
     std::array<SparseDistanceFieldMip, DistanceField::NumMips> mips;
 
     std::vector<glm::uint8> alwaysLoadedMip;
 
-    // TODO: need to switch to streaming bulk in Chaos
+    // XXX: need to switch to streaming bulk in Chaos
     std::vector<glm::uint8> streamableMips;
+
+    static void serialize(std::ostream &os, DistanceFieldVolumeData const &data);
+    static void deserialize(std::istream &is, DistanceFieldVolumeData &data);
 };
 
 /// NOTE: part of FMeshUtilities in ue5

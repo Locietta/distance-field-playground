@@ -256,3 +256,19 @@ void generateDistanceFieldVolumeData(Mesh const &mesh, Box localSpaceMeshBounds,
                mip0_indirection_dimensions.y * DistanceField::UniqueDataBrickSize,
                mip0_indirection_dimensions.z * DistanceField::UniqueDataBrickSize);
 }
+
+#include "serializer.hpp"
+
+void DistanceFieldVolumeData::serialize(std::ostream &os, DistanceFieldVolumeData const &data) {
+    ::serialize(os, data.localSpaceMeshBounds);
+    ::serialize(os, data.mips);
+    ::serialize(os, data.alwaysLoadedMip);
+    ::serialize(os, data.streamableMips);
+}
+
+void DistanceFieldVolumeData::deserialize(std::istream &is, DistanceFieldVolumeData &data) {
+    ::deserialize(is, data.localSpaceMeshBounds);
+    ::deserialize(is, data.mips);
+    ::deserialize(is, data.alwaysLoadedMip);
+    ::deserialize(is, data.streamableMips);
+}
