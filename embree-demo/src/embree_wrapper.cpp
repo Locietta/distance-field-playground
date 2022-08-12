@@ -1,5 +1,6 @@
 #include "embree_wrapper.h"
 #include "geometry_math.h"
+#include "mesh.h"
 #include <fmt/core.h>
 #include <glm/geometric.hpp>
 #include <iterator>
@@ -11,55 +12,36 @@ Scene::Scene() {
     // TODO: error handling
     scene_ = rtcNewScene(device_);
     rtcSetSceneFlags(scene_, RTC_SCENE_FLAG_NONE);
-    geo_.internal = rtcNewGeometry(device_, RTC_GEOMETRY_TYPE_TRIANGLE);
 }
 
 Scene::~Scene() {
     rtcReleaseScene(scene_);
     rtcReleaseDevice(device_);
-    if (geo_.internal != nullptr) {
-        rtcReleaseGeometry(geo_.internal);
-    }
 }
 
 constexpr int NumBufferVerts = 1; // Reserve extra space at the end of the array, as embree has an internal bug where
                                   // they read and discard 4 bytes off the end of the array
 
-void Scene::setVertices(std::vector<glm::vec3> const &vertices) {
-    geo_.verticesBuffer = vertices;
-    rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, geo_.verticesBuffer.data(), 0,
-                               sizeof(glm::vec3), geo_.verticesBuffer.size());
-}
+void Scene::addMesh(Mesh const &mesh) {
+    geos_.push_back({mesh.indices, mesh.vertices, nullptr});
 
-void Scene::setVertices(const glm::vec3 *vertices, std::size_t buffer_size) {
-    geo_.verticesBuffer.clear();
-    geo_.verticesBuffer.reserve(buffer_size);
-    std::copy(vertices, vertices + buffer_size, std::back_inserter(geo_.verticesBuffer));
+    Geometry &curr_geo = geos_.back();
 
-    rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, geo_.verticesBuffer.data(), 0,
-                               sizeof(glm::vec3), geo_.verticesBuffer.size());
-}
-
-void Scene::setIndices(std::vector<glm::uvec3> const &indices) {
-    geo_.indicesBuffer = indices;
-    rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, geo_.indicesBuffer.data(), 0, sizeof(glm::uvec3),
-                               geo_.indicesBuffer.size());
-}
-
-void Scene::setIndices(const glm::uvec3 *indices, std::size_t buffer_size) {
-    geo_.indicesBuffer.clear();
-    geo_.indicesBuffer.reserve(buffer_size);
-    std::copy(indices, indices + buffer_size, std::back_inserter(geo_.indicesBuffer));
-
-    rtcSetSharedGeometryBuffer(geo_.internal, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, geo_.indicesBuffer.data(), 0, sizeof(glm::uvec3),
-                               geo_.indicesBuffer.size());
+    curr_geo.internal = rtcNewGeometry(device_, RTC_GEOMETRY_TYPE_TRIANGLE);
+    rtcSetSharedGeometryBuffer(curr_geo.internal, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, curr_geo.verticesBuffer.data(), 0,
+                               sizeof(glm::vec3), curr_geo.verticesBuffer.size());
+    rtcSetSharedGeometryBuffer(curr_geo.internal, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, curr_geo.indicesBuffer.data(), 0,
+                               sizeof(glm::uvec3), curr_geo.indicesBuffer.size());
 }
 
 void Scene::commit() {
-    rtcSetGeometryUserData(geo_.internal, &geo_);
+    for (auto &geo_ : geos_) {
+        rtcSetGeometryUserData(geo_.internal, &geo_);
 
-    rtcCommitGeometry(geo_.internal);
-    rtcAttachGeometry(scene_, geo_.internal);
+        rtcCommitGeometry(geo_.internal);
+        rtcAttachGeometry(scene_, geo_.internal);
+        rtcReleaseGeometry(geo_.internal); // ??
+    }
     rtcCommitScene(scene_);
 }
 
@@ -115,8 +97,10 @@ public:
 
 ClosestQueryContext::ClosestQueryContext(Scene const &scene) : scene_{scene.scene_} {
     rtcInitPointQueryContext(this);
-    mesh_geometry_ = scene.geo_.internal;
-    num_triangles_ = scene.geo_.indicesBuffer.size();
+    for (const auto &geo_ : scene.geos_) {
+        mesh_geometries_.push_back(geo_.internal);
+        num_triangles_.push_back(geo_.indicesBuffer.size());
+    }
 }
 
 float ClosestQueryResult::getDistance() const {
@@ -129,11 +113,13 @@ bool ClosestQueryContext::ClosestQueryFunc(RTCPointQueryFunctionArguments *args)
     assert(args->userPtr);
     ClosestQueryResult &ClosestQuery = *reinterpret_cast<ClosestQueryResult *>(args->userPtr);
 
+    const std::uint32_t MeshIndex = args->geomID;
     const std::uint32_t TriangleIndex = args->primID;
-    assert(TriangleIndex < Context->num_triangles_);
 
-    const auto *VertexBuffer = (const glm::vec3 *) rtcGetGeometryBufferData(Context->mesh_geometry_, RTC_BUFFER_TYPE_VERTEX, 0);
-    const auto *IndexBuffer = (const std::uint32_t *) rtcGetGeometryBufferData(Context->mesh_geometry_, RTC_BUFFER_TYPE_INDEX, 0);
+    assert(TriangleIndex < Context->num_triangles_[MeshIndex]);
+
+    const auto *VertexBuffer = (const glm::vec3 *) rtcGetGeometryBufferData(Context->mesh_geometries_[MeshIndex], RTC_BUFFER_TYPE_VERTEX, 0);
+    const auto *IndexBuffer = (const std::uint32_t *) rtcGetGeometryBufferData(Context->mesh_geometries_[MeshIndex], RTC_BUFFER_TYPE_INDEX, 0);
 
     const std::uint32_t I0 = IndexBuffer[TriangleIndex * 3 + 0];
     const std::uint32_t I1 = IndexBuffer[TriangleIndex * 3 + 1];

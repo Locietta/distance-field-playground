@@ -6,12 +6,13 @@
 #include <glm/vec3.hpp>
 #include <vector>
 
+class Mesh;
+
 namespace embree {
 
 struct Geometry {
     std::vector<glm::uvec3> indicesBuffer;
     std::vector<glm::vec3> verticesBuffer;
-    std::vector<glm::vec3> faceNormalBuffer;
     RTCGeometry internal = nullptr;
 };
 
@@ -21,29 +22,13 @@ public:
 
     ~Scene();
 
-    void setVertices(std::vector<glm::vec3> const &vertices);
-
-    void setVertices(const glm::vec3 *vertices, std::size_t buffer_size);
-
-    template <std::size_t N>
-    void setVertices(const glm::vec3 (&vertices)[N]) {
-        setVertices(vertices, N);
-    }
-
-    void setIndices(std::vector<glm::uvec3> const &indices);
-
-    void setIndices(const glm::uvec3 *indices, std::size_t buffer_size);
-
-    template <std::size_t N>
-    void setIndices(const glm::uvec3 (&indices)[N]) {
-        setIndices(indices, N);
-    }
+    void addMesh(Mesh const &mesh);
 
     void commit();
 
     RTCDevice device_;
     RTCScene scene_;
-    Geometry geo_;
+    std::vector<Geometry> geos_;
 };
 
 class RayHit : public RTCRayHit {
@@ -92,8 +77,8 @@ private:
     static bool ClosestQueryFunc(RTCPointQueryFunctionArguments *args);
 
     RTCScene const &scene_;
-    RTCGeometry mesh_geometry_;
-    glm::uint32 num_triangles_;
+    std::vector<RTCGeometry> mesh_geometries_;
+    std::vector<glm::uint32> num_triangles_;
 };
 
 } // namespace embree

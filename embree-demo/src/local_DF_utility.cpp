@@ -101,9 +101,12 @@ void generateDistanceFieldVolumeData(Mesh const &mesh, Box localSpaceMeshBounds,
     auto start_time = std::chrono::steady_clock::now();
 
     embree::Scene embree_scene;
-    embree_scene.setVertices(mesh.vertices);
-    embree_scene.setIndices(mesh.indices);
+    embree_scene.addMesh(mesh);
+    embree_scene.addMesh(mesh.translate({1, 1, 1}));
     embree_scene.commit();
+
+    auto scene_prepare_end_time = std::chrono::steady_clock::now();
+    fmt::print("Prepare embree scene in {:.1f}s\n", std::chrono::duration<double>(scene_prepare_end_time - start_time).count());
 
     std::vector<glm::vec3> sample_directions;
     {
@@ -251,7 +254,7 @@ void generateDistanceFieldVolumeData(Mesh const &mesh, Box localSpaceMeshBounds,
     outData.streamableMips = std::move(streamable_mip_data); // XXX: should use streaming bulk in Chaos
 
     auto end_time = std::chrono::steady_clock::now();
-    fmt::print("Finished distance field build in {:.1f}s - {}x{}x{} sparse distance field.\n",
+    fmt::print("Distance field calculation finished in {:.1f}s overall - {}x{}x{} sparse distance field.\n",
                std::chrono::duration<double>(end_time - start_time).count(),
                mip0_indirection_dimensions.x * DistanceField::UniqueDataBrickSize,
                mip0_indirection_dimensions.y * DistanceField::UniqueDataBrickSize,
