@@ -128,7 +128,12 @@ int main(int argc, const char *argv[]) {
     DistanceFieldVolumeData::serialize(fout, volume_data);
 
     auto serialize_end_time = std::chrono::steady_clock::now();
-    fmt::print("Write results in {:.1f}s.\n", std::chrono::duration<double>(serialize_start_time - serialize_end_time).count());
+    fmt::print("Write binary results in {:.1f}s.\n", std::chrono::duration<double>(serialize_start_time - serialize_end_time).count());
+
+    // std::ifstream fin{fmt::format("{}.bin", arg_parser.output_filename), std::ios_base::binary};
+    // DistanceFieldVolumeData tmp;
+    // DistanceFieldVolumeData::deserialize(fin, tmp);
+    return 0;
 }
 
 void writePlyFile(const char *filename, fmt::memory_buffer const &vertex_descs, glm::uint vertex_count) {

@@ -1,5 +1,7 @@
 #include "mesh.h"
+#include <execution>
 #include <glm/common.hpp>
+
 
 Box Mesh::getExpandedBoundingBox() const {
     glm::vec3 min{std::numeric_limits<float>::max()};
@@ -26,4 +28,11 @@ Box Mesh::getAABB() const {
     }
 
     return {min, max};
+}
+
+Mesh Mesh::translate(glm::vec3 displacement) const {
+    std::vector<glm::vec3> out_verts;
+    std::transform(std::execution::par_unseq, vertices.cbegin(), vertices.cend(), std::back_inserter(out_verts),
+                   [displacement](glm::vec3 const &v) { return v + displacement; });
+    return Mesh{out_verts, indices};
 }

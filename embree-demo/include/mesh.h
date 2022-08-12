@@ -23,8 +23,9 @@ struct Box {
 struct Mesh {
     std::vector<glm::vec3> vertices;
     std::vector<glm::uvec3> indices;
-    std::vector<glm::vec3> faceNormal;
 
     [[nodiscard]] Box getAABB() const;
     [[nodiscard]] Box getExpandedBoundingBox() const;
+
+    [[nodiscard]] Mesh translate(glm::vec3 displacement) const;
 };
