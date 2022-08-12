@@ -35,7 +35,7 @@ void DistanceFieldBrickTask::doWork() {
                 const glm::uint32 index =
                     z_index * DistanceField::BrickSize * DistanceField::BrickSize + y_index * DistanceField::BrickSize + x_index;
 
-                float closest_distance = point_query.queryDistance(sample_position, 2 * localSpaceTraceDistance);
+                float closest_distance = point_query.queryDistance(sample_position, 1.5f * localSpaceTraceDistance);
 
                 if (closest_distance <= localSpaceTraceDistance) { // only trace rays for valid distance
                     int hit_back_count = 0;
@@ -211,6 +211,7 @@ void generateDistanceFieldVolumeData(Mesh const &mesh, Box localSpaceMeshBounds,
 
         if (mip_index == DistanceField::NumMips - 1) {
             outData.alwaysLoadedMip.resize(mip_data_bytes);
+            out_mip.bulkOffset = out_mip.bulkSize = 0;
 
             std::memcpy(&outData.alwaysLoadedMip[0], indirection_table.data(), indirection_table_bytes);
             if (distance_field_brick_data.size() > 0) {
