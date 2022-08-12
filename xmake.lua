@@ -11,9 +11,7 @@ if is_os("windows") then
 else
     set_toolchains("clang")
     add_ldflags("-Wl,-rpath .")
-    if is_mode("debug") then 
-        add_ldflags("-Wl,-rpath $(buildir)")
-    end
+    add_ldflags("-Wl,-rpath $(buildir)")
 end
 
 -- include subprojects
