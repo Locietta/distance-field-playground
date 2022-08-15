@@ -42,7 +42,7 @@ void Scene::commit() {
         rtcAttachGeometry(scene_, geo_.internal);
         rtcReleaseGeometry(geo_.internal); // ??
     }
-    rtcCommitScene(scene_);
+    rtcJoinCommitScene(scene_);
 }
 
 RayHit IntersectionContext::emitRay(glm::vec3 const &origin, glm::vec3 const &direction, float far) {
@@ -118,8 +118,10 @@ bool ClosestQueryContext::ClosestQueryFunc(RTCPointQueryFunctionArguments *args)
 
     assert(TriangleIndex < Context->num_triangles_[MeshIndex]);
 
-    const auto *VertexBuffer = (const glm::vec3 *) rtcGetGeometryBufferData(Context->mesh_geometries_[MeshIndex], RTC_BUFFER_TYPE_VERTEX, 0);
-    const auto *IndexBuffer = (const std::uint32_t *) rtcGetGeometryBufferData(Context->mesh_geometries_[MeshIndex], RTC_BUFFER_TYPE_INDEX, 0);
+    const auto *VertexBuffer =
+        (const glm::vec3 *) rtcGetGeometryBufferData(Context->mesh_geometries_[MeshIndex], RTC_BUFFER_TYPE_VERTEX, 0);
+    const auto *IndexBuffer =
+        (const std::uint32_t *) rtcGetGeometryBufferData(Context->mesh_geometries_[MeshIndex], RTC_BUFFER_TYPE_INDEX, 0);
 
     const std::uint32_t I0 = IndexBuffer[TriangleIndex * 3 + 0];
     const std::uint32_t I1 = IndexBuffer[TriangleIndex * 3 + 1];

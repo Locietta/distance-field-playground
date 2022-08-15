@@ -21,7 +21,7 @@ void deserialize(std::istream &is, T &val) {
 
 // containers
 template <typename T, typename U = std::decay_t<decltype(*std::declval<const T &>().begin())>,
-          typename std::enable_if_t<!std::is_trivially_copyable<U>::value, int> = 0>
+          typename std::enable_if_t<!std::is_trivially_copyable<U>::value && !std::is_trivially_copyable<T>::value, int> = 0>
 void serialize(std::ostream &os, const T &val) {
     unsigned int size = val.size();
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
@@ -30,8 +30,8 @@ void serialize(std::ostream &os, const T &val) {
     }
 }
 
-template <typename T, typename U = std::decay_t<decltype(*std::declval<const T &>().begin())>,
-          typename std::enable_if_t<!std::is_trivially_copyable<U>::value, int> = 0>
+template <typename T, typename U = std::decay_t<decltype(*std::declval<T &>().begin())>,
+          typename std::enable_if_t<!std::is_trivially_copyable<U>::value && !std::is_trivially_copyable<T>::value, int> = 0>
 void deserialize(std::istream &is, T &val) {
     unsigned int size = 0;
     is.read(reinterpret_cast<char *>(&size), sizeof(size));
@@ -43,15 +43,15 @@ void deserialize(std::istream &is, T &val) {
 
 // container of trivially copyables, better performance
 template <typename T, typename U = std::decay_t<decltype(*std::declval<const T &>().begin())>,
-          typename std::enable_if_t<std::is_trivially_copyable<U>::value, int> = 0>
+          typename std::enable_if_t<std::is_trivially_copyable<U>::value && !std::is_trivially_copyable<T>::value, int> = 0>
 void serialize(std::ostream &os, const T &val) {
     unsigned int size = val.size();
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
     os.write(reinterpret_cast<const char *>(val.data()), size * sizeof(U));
 }
 
-template <typename T, typename U = std::decay_t<decltype(*std::declval<const T &>().begin())>,
-          typename std::enable_if_t<std::is_trivially_copyable<U>::value, int> = 0>
+template <typename T, typename U = std::decay_t<decltype(*std::declval<T &>().begin())>,
+          typename std::enable_if_t<std::is_trivially_copyable<U>::value && !std::is_trivially_copyable<T>::value, int> = 0>
 void deserialize(std::istream &is, T &val) {
     unsigned int size = 0;
     is.read(reinterpret_cast<char *>(&size), sizeof(size));
