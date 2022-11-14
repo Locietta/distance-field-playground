@@ -2,4 +2,4 @@
 
 struct Mesh;
 
-Mesh parsePlyFile(const char *filename);
+Mesh parse_ply_file(const char *filename);

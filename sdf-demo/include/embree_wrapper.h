@@ -11,8 +11,8 @@ class Mesh;
 namespace embree {
 
 struct Geometry {
-    std::vector<glm::uvec3> indicesBuffer;
-    std::vector<glm::vec3> verticesBuffer;
+    std::vector<glm::uvec3> indices_buffer;
+    std::vector<glm::vec3> vertices_buffer;
     RTCGeometry internal = nullptr;
 };
 
@@ -53,8 +53,7 @@ private:
 
 class ClosestQueryResult {
 public:
-    // bool valid = false;
-    glm::vec3 closestPoint;
+    glm::vec3 closest_point;
 
     // not free lunch, will call `sqrt()`
     [[nodiscard]] float getDistance() const;
@@ -62,7 +61,7 @@ public:
 private:
     friend class ClosestQueryContext;
 
-    float queryDistanceSq;
+    float query_distance_sq;
 };
 
 class ClosestQueryContext : public RTCPointQueryContext {
@@ -74,7 +73,7 @@ public:
     float queryDistance(glm::vec3 center, float radius) { return query(center, radius).getDistance(); }
 
 private:
-    static bool ClosestQueryFunc(RTCPointQueryFunctionArguments *args);
+    static bool closestQueryFunc(RTCPointQueryFunctionArguments *args);
 
     RTCScene const &scene_;
     std::vector<RTCGeometry> mesh_geometries_;

@@ -6,7 +6,7 @@
 #include <sstream>
 #include <string>
 
-Mesh parsePlyFile(const char *filename) {
+Mesh parse_ply_file(const char *filename) {
     std::ifstream fin(filename);
 
     if (!fin) {
@@ -61,7 +61,7 @@ Mesh parsePlyFile(const char *filename) {
         fin >> vert_count >> face[0] >> face[1] >> face[2];
         if (vert_count == 4) {
             fin >> vert_count; // use unused vert_count as face[3]
-            mesh.indices.emplace_back(glm::uvec3{face[2], vert_count, face[0]});
+            mesh.indices.emplace_back(face[2], vert_count, face[0]);
         }
         fin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // skip line
         mesh.indices.emplace_back(face);

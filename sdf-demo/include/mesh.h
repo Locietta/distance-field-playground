@@ -6,7 +6,7 @@
 struct Vertex {
     glm::vec3 pos;
     glm::vec3 normal;
-    glm::vec3 texCoord;
+    glm::vec3 tex_coord;
 };
 
 struct Box {

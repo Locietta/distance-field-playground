@@ -66,13 +66,21 @@ void deserialize(std::istream &is, T &val) {
 template <typename T>
 concept trivially_copyable = std::is_trivially_copyable_v<T>;
 
+// bug of clang-format 15 on concepts: https://github.com/llvm/llvm-project/issues/55898
+// and behavior change on requires expression indentation
+// waiting for clang-format 16 to add `RequiresExpressionIndentation` and fix llvm/llvm-project#55898
+
+// clang-format off
+
 // a container that can't be copied trivially (true for std::vector, false for std::array)
 template <typename T>
-concept container = !trivially_copyable<T> && requires {
+concept container = (!trivially_copyable<T>) && requires {
     std::declval<const T &>().begin();
     std::declval<T &>().begin();
     std::declval<T>().begin();
 };
+
+// clang-format on
 
 template <typename T>
 concept trivial_element = trivially_copyable<std::decay_t<decltype(*std::declval<T>().begin())>>;
@@ -81,7 +89,7 @@ template <typename T>
 concept trivial_container = container<T> && trivial_element<T>;
 
 template <typename T>
-concept nontrivial_container = container<T> && !trivial_element<T>;
+concept nontrivial_container = container<T> && (!trivial_element<T>);
 
 // trivially-copyable
 template <trivially_copyable T>

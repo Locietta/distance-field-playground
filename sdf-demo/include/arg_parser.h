@@ -21,12 +21,12 @@ public:
     const char *input_filename = "meshes/test_sphere.ply";
     const char *output_filename = "DF_OUTPUT";
     float voxel_density = 0.2;
-    float DF_resolution_scale = 1.0; // per mesh in ue5
+    float df_resolution_scale = 1.0; // per mesh in ue5
     float display_distance = 0.0f;
     bool outside_only = false;
     bool sample_mode = false;
     bool parallel = false;
 
-    ArgParser(_) {};
+    ArgParser(_ /*unused*/) {};
     void parseCommandLine(int argc, const char *argv[]);
 };

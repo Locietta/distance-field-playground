@@ -18,7 +18,7 @@
 constexpr glm::uint8 MAX_UINT8 = std::numeric_limits<glm::uint8>::max();
 constexpr glm::uint8 MIN_UINT8 = std::numeric_limits<glm::uint8>::min();
 
-void writePlyFile(const char *filename, fmt::memory_buffer const &vertexDescs, glm::uint vertexCount);
+void write_ply_file(const char *filename, fmt::memory_buffer const &vertex_descs, glm::uint vertex_count);
 
 ArgParser &arg_parser = ArgParser::getInstance();
 
@@ -26,61 +26,61 @@ int main(int argc, const char *argv[]) {
     arg_parser.parseCommandLine(argc, argv);
 
     auto read_start_time = std::chrono::system_clock::now();
-    Mesh mesh = parsePlyFile(arg_parser.input_filename);
+    Mesh mesh = parse_ply_file(arg_parser.input_filename);
     auto read_end_time = std::chrono::system_clock::now();
     fmt::print("Read PLY model '{}' in {:.1f}s.\n", arg_parser.input_filename,
                std::chrono::duration<double>(read_end_time - read_start_time).count());
 
     DistanceFieldVolumeData volume_data;
-    generateDistanceFieldVolumeData(mesh, mesh.getAABB(), arg_parser.DF_resolution_scale, volume_data);
+    generate_distance_field_volume_data(mesh, mesh.getAABB(), arg_parser.df_resolution_scale, volume_data);
 
     /// visualization for mips
 
     auto write_start_time = std::chrono::system_clock::now();
 
-    Box const &mesh_bounds = volume_data.localSpaceMeshBounds;
+    Box const &mesh_bounds = volume_data.local_space_mesh_bounds;
 
     fmt::memory_buffer buffer;
     fmt::memory_buffer buffer_invalid_brick; // for visualization of invalid brick
 
-    for (int mip_index = 0; mip_index < DistanceField::NumMips; ++mip_index) {
+    for (int mip_index = 0; mip_index < DistanceField::NUM_MIPS; ++mip_index) {
         glm::uint vertex_count = 0;
         glm::uint vertex_count_invalid_brick = 0;
 
         SparseDistanceFieldMip const &mip = volume_data.mips[mip_index];
 
-        const glm::uint indirection_table_size = mip.indirectionDimensions.x * mip.indirectionDimensions.y * mip.indirectionDimensions.z;
+        const glm::uint indirection_table_size = mip.indirection_dimensions.x * mip.indirection_dimensions.y * mip.indirection_dimensions.z;
         const glm::uint indirection_table_size_bytes = indirection_table_size * sizeof(glm::uint32);
-        const glm::uint brick_size = DistanceField::BrickSize * DistanceField::BrickSize * DistanceField::BrickSize;
+        const glm::uint brick_size = DistanceField::BRICK_SIZE * DistanceField::BRICK_SIZE * DistanceField::BRICK_SIZE;
         const glm::uint brick_size_bytes = brick_size * sizeof(glm::uint8);
-        const glm::uvec3 dimensions = mip.indirectionDimensions;
+        const glm::uvec3 dimensions = mip.indirection_dimensions;
 
         glm::uint32 *indirection_table = nullptr;
         glm::uint8 *brick_data = nullptr;
 
-        if (mip_index == DistanceField::NumMips - 1) {
-            assert(volume_data.alwaysLoadedMip.size() == indirection_table_size_bytes + brick_size_bytes * mip.numDistanceFieldBricks);
-            indirection_table = reinterpret_cast<glm::uint32 *>(volume_data.alwaysLoadedMip.data());
-            brick_data = volume_data.alwaysLoadedMip.data() + indirection_table_size_bytes;
+        if (mip_index == DistanceField::NUM_MIPS - 1) {
+            assert(volume_data.always_loaded_mip.size() == indirection_table_size_bytes + brick_size_bytes * mip.num_distance_field_bricks);
+            indirection_table = reinterpret_cast<glm::uint32 *>(volume_data.always_loaded_mip.data());
+            brick_data = volume_data.always_loaded_mip.data() + indirection_table_size_bytes;
         } else {
-            assert(mip.bulkSize == indirection_table_size_bytes + brick_size_bytes * mip.numDistanceFieldBricks);
-            indirection_table = reinterpret_cast<glm::uint32 *>(volume_data.streamableMips.data() + mip.bulkOffset);
-            brick_data = volume_data.streamableMips.data() + mip.bulkOffset + indirection_table_size_bytes;
+            assert(mip.bulk_size == indirection_table_size_bytes + brick_size_bytes * mip.num_distance_field_bricks);
+            indirection_table = reinterpret_cast<glm::uint32 *>(volume_data.streamable_mips.data() + mip.bulk_offset);
+            brick_data = volume_data.streamable_mips.data() + mip.bulk_offset + indirection_table_size_bytes;
         }
 
         assert(indirection_table && brick_data);
 
         glm::uint sample_count = 0;
 
-        const glm::vec3 distance_field_voxel_size = mesh_bounds.getSize() / glm::vec3(dimensions * DistanceField::UniqueDataBrickSize -
-                                                                                      2 * DistanceField::MeshDistanceFieldObjectBorder);
+        const glm::vec3 distance_field_voxel_size = mesh_bounds.getSize() / glm::vec3(dimensions * DistanceField::UNIQUE_DATA_BRICK_SIZE -
+                                                                                      2 * DistanceField::MESH_DISTANCE_FIELD_OBJECT_BORDER);
         const Box distance_field_volume_bounds = mesh_bounds.expandBy(distance_field_voxel_size);
-        const glm::vec3 indirection_voxel_size = distance_field_voxel_size * (float) DistanceField::UniqueDataBrickSize;
+        const glm::vec3 indirection_voxel_size = distance_field_voxel_size * (float) DistanceField::UNIQUE_DATA_BRICK_SIZE;
 
         for (glm::uint position_index = 0; position_index < indirection_table_size; ++position_index) {
             const glm::uint32 brick_offset = indirection_table[position_index];
 
-            bool is_valid_brick = brick_offset != DistanceField::InvalidBrickIndex;
+            bool is_valid_brick = brick_offset != DistanceField::INVALID_BRICK_INDEX;
             glm::vec3 display_color = is_valid_brick ? glm::vec3(200, 200, 200) : glm::vec3(0, 0, 0);
             fmt::memory_buffer &visual_buffer = is_valid_brick ? buffer : buffer_invalid_brick;
 
@@ -93,9 +93,9 @@ int main(int argc, const char *argv[]) {
             const glm::vec3 brick_min_position = distance_field_volume_bounds.min + glm::vec3(brick_coordinate) * indirection_voxel_size;
             for (glm::uint i = 0; i < brick_size; ++i) {
                 const glm::uvec3 voxel_coordinate = {
-                    i % DistanceField::BrickSize,
-                    i / DistanceField::BrickSize % DistanceField::BrickSize,
-                    i / DistanceField::BrickSize / DistanceField::BrickSize,
+                    i % DistanceField::BRICK_SIZE,
+                    i / DistanceField::BRICK_SIZE % DistanceField::BRICK_SIZE,
+                    i / DistanceField::BRICK_SIZE / DistanceField::BRICK_SIZE,
                 };
 
                 const glm::vec3 sample_position = glm::vec3(voxel_coordinate) * distance_field_voxel_size + brick_min_position;
@@ -110,9 +110,9 @@ int main(int argc, const char *argv[]) {
             }
         }
 
-        writePlyFile(fmt::format("{}{}_valid_bricks.ply", arg_parser.output_filename, mip_index).c_str(), buffer, vertex_count);
-        writePlyFile(fmt::format("{}{}_invalid_bricks.ply", arg_parser.output_filename, mip_index).c_str(), buffer_invalid_brick,
-                     vertex_count_invalid_brick);
+        write_ply_file(fmt::format("{}{}_valid_bricks.ply", arg_parser.output_filename, mip_index).c_str(), buffer, vertex_count);
+        write_ply_file(fmt::format("{}{}_invalid_bricks.ply", arg_parser.output_filename, mip_index).c_str(), buffer_invalid_brick,
+                       vertex_count_invalid_brick);
 
         buffer.clear();
         buffer_invalid_brick.clear();
@@ -136,7 +136,7 @@ int main(int argc, const char *argv[]) {
     return 0;
 }
 
-void writePlyFile(const char *filename, fmt::memory_buffer const &vertex_descs, glm::uint vertex_count) {
+void write_ply_file(const char *filename, fmt::memory_buffer const &vertex_descs, glm::uint vertex_count) {
     FILE *output_file = fopen(filename, "w+");
     if (output_file == nullptr) fmt::print(stderr, "Failed to open {}\n", filename);
 

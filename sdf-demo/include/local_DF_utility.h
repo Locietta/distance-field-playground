@@ -11,19 +11,19 @@
 
 namespace DistanceField {
 
-constexpr glm::uint32 UniqueDataBrickSize = 7;
+constexpr glm::uint32 UNIQUE_DATA_BRICK_SIZE = 7;
 
-constexpr glm::uint32 BrickSize = 8;
+constexpr glm::uint32 BRICK_SIZE = 8;
 
-constexpr glm::uint32 BandSizeInVoxels = 4; // brick radius
+constexpr glm::uint32 BAND_SIZE_IN_VOXELS = 4; // brick radius
 
-constexpr glm::uint32 InvalidBrickIndex = 0xFFFFFFFF;
+constexpr glm::uint32 INVALID_BRICK_INDEX = 0xFFFFFFFF;
 
-constexpr glm::uint32 MaxIndirectionDimension = 1024;
+constexpr glm::uint32 MAX_INDIRECTION_DIMENSION = 1024;
 
-constexpr glm::uint32 MeshDistanceFieldObjectBorder = 1;
+constexpr glm::uint32 MESH_DISTANCE_FIELD_OBJECT_BORDER = 1;
 
-constexpr glm::uint32 NumMips = 3;
+constexpr glm::uint32 NUM_MIPS = 3;
 
 } // namespace DistanceField
 
@@ -33,56 +33,59 @@ namespace embree {
 class Scene;
 }
 
+struct A{
+    int aaa;
+};
+
 class DistanceFieldBrickTask {
 public:
-    DistanceFieldBrickTask(embree::Scene const &embreeScene, std::vector<glm::vec3> const &sampleDirection, float localSpaceTraceDistance,
-                           Box volumeBounds, glm::uvec3 brickCoordinate, glm::vec3 indirectionVoxelSize);
+    DistanceFieldBrickTask(embree::Scene const &embree_scene, std::vector<glm::vec3> const &sample_direction, float local_space_trace_distance,
+                           Box volume_bounds, glm::uvec3 brick_coordinate, glm::vec3 indirection_voxel_size);
 
     void doWork();
 
     // input, read-only
-    embree::Scene const &embreeScene;
-    std::vector<glm::vec3> const &sampleDirection;
-    float localSpaceTraceDistance;
-    Box volumeBounds;
-    const glm::uvec3 brickCoordinate;
-    const glm::vec3 indirectionVoxelSize;
+    embree::Scene const &embree_scene;
+    std::vector<glm::vec3> const &sample_direction;
+    float local_space_trace_distance;
+    Box volume_bounds;
+    const glm::uvec3 brick_coordinate;
+    const glm::vec3 indirection_voxel_size;
 
     // outputs
-    glm::uint8 brickMaxDistance;
-    glm::uint8 brickMinDistance;
-    std::vector<glm::uint8> distanceFieldVolume;
+    glm::uint8 brick_max_distance;
+    glm::uint8 brick_min_distance;
+    std::vector<glm::uint8> distance_field_volume;
 };
 
-class SparseDistanceFieldMip {
-public:
-    glm::uvec3 indirectionDimensions;
-    glm::uint32 numDistanceFieldBricks;
-    glm::vec3 volumeToVirtualUVScale;
-    glm::vec3 volumeToVirtualUVAdd;
-    glm::vec2 distanceFieldToVolumeScaleBias;
+struct SparseDistanceFieldMip {
+    glm::uvec3 indirection_dimensions;
+    glm::uint32 num_distance_field_bricks;
+    glm::vec3 volume_to_virtual_uv_scale;
+    glm::vec3 volume_to_virtual_uv_add;
+    glm::vec2 distance_field_to_volume_scale_bias;
 
-    glm::uint32 bulkOffset;
-    glm::uint32 bulkSize;
+    glm::uint32 bulk_offset;
+    glm::uint32 bulk_size;
 };
 
 /// defered clean-up resource
 class DistanceFieldVolumeData {
 public:
-    Box localSpaceMeshBounds;
+    Box local_space_mesh_bounds;
 
     // bool bMostlyTwoSided;
 
-    std::array<SparseDistanceFieldMip, DistanceField::NumMips> mips;
+    std::array<SparseDistanceFieldMip, DistanceField::NUM_MIPS> mips;
 
-    std::vector<glm::uint8> alwaysLoadedMip;
+    std::vector<glm::uint8> always_loaded_mip;
 
     // XXX: need to switch to streaming bulk in Chaos
-    std::vector<glm::uint8> streamableMips;
+    std::vector<glm::uint8> streamable_mips;
 
     static void serialize(std::ostream &os, DistanceFieldVolumeData const &data);
     static void deserialize(std::istream &is, DistanceFieldVolumeData &data);
 };
 
 /// NOTE: part of FMeshUtilities in ue5
-void generateDistanceFieldVolumeData(Mesh const &mesh, Box bounds, float distanceFieldResolutionScale, DistanceFieldVolumeData &outData);
+void generate_distance_field_volume_data(Mesh const &mesh, Box bounds, float distance_field_resolution_scale, DistanceFieldVolumeData &out_data);
