@@ -5,4 +5,4 @@ target("embree-demo")
     add_files("src/*.cpp")
     add_includedirs("include")
     add_packages("fmt", "embree", "glm")
-    add_cxflags("-Wno-unused-command-line-argument")
+    
