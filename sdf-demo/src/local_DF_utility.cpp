@@ -101,7 +101,7 @@ void generate_distance_field_volume_data(Mesh const &mesh, Box local_space_mesh_
 
     embree::Scene embree_scene;
     embree_scene.addMesh(mesh);
-    embree_scene.addMesh(mesh.translate({1, 1, 1}));
+    // embree_scene.addMesh(mesh.translate({1, 1, 1}));
     embree_scene.commit();
 
     auto scene_prepare_end_time = std::chrono::steady_clock::now();

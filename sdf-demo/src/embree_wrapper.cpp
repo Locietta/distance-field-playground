@@ -5,7 +5,7 @@
 #include <glm/geometric.hpp>
 #include <iterator>
 
-using namespace embree;
+namespace embree {
 
 Scene::Scene() {
     device_ = rtcNewDevice(nullptr);
@@ -159,3 +159,5 @@ ClosestQueryResult ClosestQueryContext::query(glm::vec3 center, float radius) {
 
     return closest_query;
 }
+
+} // namespace embree
