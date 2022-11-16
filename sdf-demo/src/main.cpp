@@ -3,7 +3,6 @@
 #include "geometry_math.h"
 #include "local_DF_utility.h"
 #include "mesh.h"
-#include "ply_loader.h"
 
 #include "format.hpp"
 #include <chrono>
@@ -26,7 +25,8 @@ int main(int argc, const char *argv[]) {
     arg_parser.parseCommandLine(argc, argv);
 
     auto read_start_time = std::chrono::system_clock::now();
-    Mesh mesh = parse_ply_file(arg_parser.input_filename);
+    const std::vector<Mesh> meshes = Mesh::importFromFile(arg_parser.input_filename);
+    const Mesh &mesh = meshes.front();
     auto read_end_time = std::chrono::system_clock::now();
     fmt::print("Read PLY model '{}' in {:.1f}s.\n", arg_parser.input_filename,
                std::chrono::duration<double>(read_end_time - read_start_time).count());
@@ -128,7 +128,7 @@ int main(int argc, const char *argv[]) {
     DistanceFieldVolumeData::serialize(fout, volume_data);
 
     auto serialize_end_time = std::chrono::steady_clock::now();
-    fmt::print("Write binary results in {:.1f}s.\n", std::chrono::duration<double>(serialize_start_time - serialize_end_time).count());
+    fmt::print("Write binary results in {:.1f}ms.\n", std::chrono::duration<double>(serialize_end_time - serialize_start_time).count() * 1000);
 
     // std::ifstream fin{fmt::format("{}.bin", arg_parser.output_filename), std::ios_base::binary};
     // DistanceFieldVolumeData tmp;

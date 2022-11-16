@@ -28,4 +28,6 @@ struct Mesh {
     [[nodiscard]] Box getExpandedBoundingBox() const;
 
     [[nodiscard]] Mesh translate(glm::vec3 displacement) const;
+
+    static std::vector<Mesh> importFromFile(const char *file_path);
 };
