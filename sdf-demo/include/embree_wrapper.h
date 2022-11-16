@@ -5,14 +5,15 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <vector>
+#include <span>
 
 struct Mesh;
 
 namespace embree {
 
 struct Geometry {
-    std::vector<glm::uvec3> indices_buffer;
-    std::vector<glm::vec3> vertices_buffer;
+    std::span<const glm::uvec3> indices_buffer;
+    std::span<const glm::vec3> vertices_buffer;
     RTCGeometry internal = nullptr;
 };
 
