@@ -4,8 +4,8 @@
 #include <embree3/rtcore_ray.h>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
-#include <vector>
 #include <span>
+#include <vector>
 
 struct Mesh;
 

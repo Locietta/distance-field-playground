@@ -119,7 +119,7 @@ int main(int argc, const char *argv[]) {
     }
 
     auto write_end_time = std::chrono::system_clock::now();
-    fmt::print("Write results in {:.1f}s.\n", std::chrono::duration<double>(read_end_time - read_start_time).count());
+    fmt::print("Write results in {:.1f}s.\n", std::chrono::duration<double>(write_end_time - write_start_time).count());
 
     auto serialize_start_time = std::chrono::steady_clock::now();
 
@@ -128,7 +128,8 @@ int main(int argc, const char *argv[]) {
     DistanceFieldVolumeData::serialize(fout, volume_data);
 
     auto serialize_end_time = std::chrono::steady_clock::now();
-    fmt::print("Write binary results in {:.1f}ms.\n", std::chrono::duration<double>(serialize_end_time - serialize_start_time).count() * 1000);
+    fmt::print("Write binary results in {:.1f}ms.\n",
+               std::chrono::duration<double>(serialize_end_time - serialize_start_time).count() * 1000);
 
     // std::ifstream fin{fmt::format("{}.bin", arg_parser.output_filename), std::ios_base::binary};
     // DistanceFieldVolumeData tmp;

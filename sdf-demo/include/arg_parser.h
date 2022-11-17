@@ -27,6 +27,6 @@ public:
     bool sample_mode = false;
     bool parallel = false;
 
-    ArgParser(_ /*unused*/) {};
+    ArgParser(_ /*unused*/){};
     void parseCommandLine(int argc, const char *argv[]);
 };

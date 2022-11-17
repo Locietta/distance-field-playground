@@ -5,8 +5,8 @@
 #include <array>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
-#include <ostream>
 #include <istream>
+#include <ostream>
 #include <vector>
 
 namespace DistanceField {
@@ -33,14 +33,11 @@ namespace embree {
 class Scene;
 }
 
-struct A{
-    int aaa;
-};
-
 class DistanceFieldBrickTask {
 public:
-    DistanceFieldBrickTask(embree::Scene const &embree_scene, std::vector<glm::vec3> const &sample_direction, float local_space_trace_distance,
-                           Box volume_bounds, glm::uvec3 brick_coordinate, glm::vec3 indirection_voxel_size);
+    DistanceFieldBrickTask(embree::Scene const &embree_scene, std::vector<glm::vec3> const &sample_direction,
+                           float local_space_trace_distance, Box volume_bounds, glm::uvec3 brick_coordinate,
+                           glm::vec3 indirection_voxel_size);
 
     void doWork();
 
@@ -88,4 +85,5 @@ public:
 };
 
 /// NOTE: part of FMeshUtilities in ue5
-void generate_distance_field_volume_data(Mesh const &mesh, Box bounds, float distance_field_resolution_scale, DistanceFieldVolumeData &out_data);
+void generate_distance_field_volume_data(Mesh const &mesh, Box bounds, float distance_field_resolution_scale,
+                                         DistanceFieldVolumeData &out_data);
