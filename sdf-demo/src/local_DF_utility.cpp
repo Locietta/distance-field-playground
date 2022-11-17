@@ -12,7 +12,7 @@
 constexpr glm::uint8 MAX_UINT8 = std::numeric_limits<glm::uint8>::max();
 constexpr glm::uint8 MIN_UINT8 = std::numeric_limits<glm::uint8>::min();
 
-DistanceFieldBrickTask::DistanceFieldBrickTask(embree::Scene const &embree_scene, std::vector<glm::vec3> const &sample_direction,
+DistanceFieldBrickTask::DistanceFieldBrickTask(embree::Scene const &embree_scene, std::span<const glm::vec3> sample_direction,
                                                float local_space_trace_distance, Box volume_bounds, glm::uvec3 brick_coordinate,
                                                glm::vec3 indirection_voxel_size)
     : embree_scene{embree_scene}, sample_direction{sample_direction}, local_space_trace_distance{local_space_trace_distance},

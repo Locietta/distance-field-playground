@@ -7,6 +7,7 @@
 #include <glm/vec3.hpp>
 #include <istream>
 #include <ostream>
+#include <span>
 #include <vector>
 
 namespace DistanceField {
@@ -35,7 +36,7 @@ class Scene;
 
 class DistanceFieldBrickTask {
 public:
-    DistanceFieldBrickTask(embree::Scene const &embree_scene, std::vector<glm::vec3> const &sample_direction,
+    DistanceFieldBrickTask(embree::Scene const &embree_scene, std::span<const glm::vec3> sample_direction,
                            float local_space_trace_distance, Box volume_bounds, glm::uvec3 brick_coordinate,
                            glm::vec3 indirection_voxel_size);
 
@@ -43,7 +44,7 @@ public:
 
     // input, read-only
     embree::Scene const &embree_scene;
-    std::vector<glm::vec3> const &sample_direction;
+    std::span<const glm::vec3> sample_direction;
     float local_space_trace_distance;
     Box volume_bounds;
     const glm::uvec3 brick_coordinate;
