@@ -61,8 +61,6 @@ void deserialize(std::istream &is, T &val) {
 
 #else
 
-#include <concepts>
-
 template <typename T>
 concept trivially_copyable = std::is_trivially_copyable_v<T>;
 

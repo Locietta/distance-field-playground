@@ -1,8 +1,8 @@
 #include "arg_parser.h"
 #include "embree_wrapper.h"
-#include "geometry_math.h"
-#include "local_DF_utility.h"
+#include "local_sdf.h"
 #include "mesh.h"
+#include "sdf_math.h"
 
 #include "format.hpp"
 #include <chrono>

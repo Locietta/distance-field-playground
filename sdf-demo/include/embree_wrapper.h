@@ -2,7 +2,6 @@
 
 #include <embree3/rtcore.h>
 #include <embree3/rtcore_ray.h>
-#include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <span>
 #include <vector>

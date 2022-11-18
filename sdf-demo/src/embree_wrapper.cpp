@@ -1,6 +1,6 @@
 #include "embree_wrapper.h"
-#include "geometry_math.h"
 #include "mesh.h"
+#include "sdf_math.h"
 #include <fmt/core.h>
 #include <glm/geometric.hpp>
 #include <iterator>
