@@ -55,7 +55,6 @@ std::vector<Mesh> Mesh::importFromFile(const char *file_path) {
 
     for (int i = 0; i < scene->mNumMeshes; ++i) {
         const auto &mesh = scene->mMeshes[i];
-        // const char *mesh_name = mesh->mName.C_Str();
 
         result[i].vertices.resize(mesh->mNumVertices);
         result[i].indices.resize(mesh->mNumFaces);

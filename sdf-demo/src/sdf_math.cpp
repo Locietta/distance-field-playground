@@ -46,8 +46,8 @@ glm::dvec3 closest_point_on_triangle(glm::dvec3 const &P, glm::dvec3 const &A, g
         {C, glm::cross(normal, CB)},
     };
 
-    int plane_half_space_bit_mask = 0;
-    for (int i = 0; i < 3; ++i) {
+    glm::uint32 plane_half_space_bit_mask = 0;
+    for (glm::uint32 i = 0; i < 3; ++i) {
         if (planes[i].planeDot(P) > 0.0f) {
             plane_half_space_bit_mask |= (1 << i);
         }

@@ -23,7 +23,7 @@ void deserialize(std::istream &is, T &val) {
 template <typename T, typename U = std::decay_t<decltype(*std::declval<const T &>().begin())>,
           typename std::enable_if_t<!std::is_trivially_copyable<U>::value && !std::is_trivially_copyable<T>::value, int> = 0>
 void serialize(std::ostream &os, const T &val) {
-    unsigned int size = val.size();
+    std::uint32_t size = val.size();
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
     for (auto &v : val) {
         serialize(os, v);
@@ -33,7 +33,7 @@ void serialize(std::ostream &os, const T &val) {
 template <typename T, typename U = std::decay_t<decltype(*std::declval<T &>().begin())>,
           typename std::enable_if_t<!std::is_trivially_copyable<U>::value && !std::is_trivially_copyable<T>::value, int> = 0>
 void deserialize(std::istream &is, T &val) {
-    unsigned int size = 0;
+    std::uint32_t size = 0;
     is.read(reinterpret_cast<char *>(&size), sizeof(size));
     val.resize(size);
     for (auto &v : val) {
@@ -45,7 +45,7 @@ void deserialize(std::istream &is, T &val) {
 template <typename T, typename U = std::decay_t<decltype(*std::declval<const T &>().begin())>,
           typename std::enable_if_t<std::is_trivially_copyable<U>::value && !std::is_trivially_copyable<T>::value, int> = 0>
 void serialize(std::ostream &os, const T &val) {
-    unsigned int size = val.size();
+    std::uint32_t size = val.size();
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
     os.write(reinterpret_cast<const char *>(val.data()), size * sizeof(U));
 }
@@ -53,7 +53,7 @@ void serialize(std::ostream &os, const T &val) {
 template <typename T, typename U = std::decay_t<decltype(*std::declval<T &>().begin())>,
           typename std::enable_if_t<std::is_trivially_copyable<U>::value && !std::is_trivially_copyable<T>::value, int> = 0>
 void deserialize(std::istream &is, T &val) {
-    unsigned int size = 0;
+    std::uint32_t size = 0;
     is.read(reinterpret_cast<char *>(&size), sizeof(size));
     val.resize(size);
     is.read(reinterpret_cast<char *>(val.data()), size * sizeof(U));
@@ -103,7 +103,7 @@ void deserialize(std::istream &is, T &val) {
 // containers
 template <nontrivial_container T>
 void serialize(std::ostream &os, const T &val) {
-    unsigned int size = val.size();
+    std::uint32_t size = val.size();
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
     for (auto &v : val) {
         serialize(os, v);
@@ -112,7 +112,7 @@ void serialize(std::ostream &os, const T &val) {
 
 template <nontrivial_container T>
 void deserialize(std::istream &is, T &val) {
-    unsigned int size = 0;
+    std::uint32_t size = 0;
     is.read(reinterpret_cast<char *>(&size), sizeof(size));
     val.resize(size);
     for (auto &v : val) {
@@ -125,7 +125,7 @@ template <trivial_container T>
 void serialize(std::ostream &os, const T &val) {
     using E = std::decay_t<decltype(*std::declval<T>().begin())>;
 
-    unsigned int size = val.size();
+    std::uint32_t size = val.size();
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
     os.write(reinterpret_cast<const char *>(val.data()), size * sizeof(E));
 }
@@ -134,7 +134,7 @@ template <trivial_container T>
 void deserialize(std::istream &is, T &val) {
     using E = std::decay_t<decltype(*std::declval<T>().begin())>;
 
-    unsigned int size = 0;
+    std::uint32_t size = 0;
     is.read(reinterpret_cast<char *>(&size), sizeof(size));
     val.resize(size);
     is.read(reinterpret_cast<char *>(val.data()), size * sizeof(E));

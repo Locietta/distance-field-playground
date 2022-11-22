@@ -9,8 +9,32 @@
 #include <fmt/core.h>
 #include <glm/geometric.hpp>
 
+namespace {
+
 constexpr glm::uint8 MAX_UINT8 = std::numeric_limits<glm::uint8>::max();
 constexpr glm::uint8 MIN_UINT8 = std::numeric_limits<glm::uint8>::min();
+
+template <std::integral T>
+T divide_and_round_up(T dividend, T divisor) {
+    return (dividend + divisor - 1) / divisor;
+}
+
+template <typename T> // T should be a STL container
+constexpr std::size_t element_size(T const & /*unused*/) {
+    return sizeof(typename T::value_type);
+}
+
+constexpr float max_component(glm::vec3 vec) {
+    return std::max(vec.x, std::max(vec.y, vec.z));
+}
+
+inline glm::uint32 compute_linear_voxel_index(glm::uvec3 voxel_coordinate, glm::uvec3 volume_dimensions) {
+    return (voxel_coordinate.z * volume_dimensions.y + voxel_coordinate.y) * volume_dimensions.x + voxel_coordinate.x;
+}
+
+ArgParser const &arg_parser = ArgParser::getInstance();
+
+} // namespace
 
 DistanceFieldBrickTask::DistanceFieldBrickTask(embree::Scene const &embree_scene, std::span<const glm::vec3> sample_direction,
                                                float local_space_trace_distance, Box volume_bounds, glm::uvec3 brick_coordinate,
@@ -28,9 +52,9 @@ void DistanceFieldBrickTask::doWork() {
 
     distance_field_volume.resize((std::size_t) DistanceField::BRICK_SIZE * DistanceField::BRICK_SIZE * DistanceField::BRICK_SIZE);
 
-    for (glm::uint z_index = 0; z_index < DistanceField::BRICK_SIZE; ++z_index) {
-        for (glm::uint y_index = 0; y_index < DistanceField::BRICK_SIZE; ++y_index) {
-            for (glm::uint x_index = 0; x_index < DistanceField::BRICK_SIZE; ++x_index) {
+    for (glm::uint32 z_index = 0; z_index < DistanceField::BRICK_SIZE; ++z_index) {
+        for (glm::uint32 y_index = 0; y_index < DistanceField::BRICK_SIZE; ++y_index) {
+            for (glm::uint32 x_index = 0; x_index < DistanceField::BRICK_SIZE; ++x_index) {
                 const glm::vec3 sample_position = glm::vec3(x_index, y_index, z_index) * distance_field_voxel_size + brick_min_position;
                 const glm::uint32 index =
                     z_index * DistanceField::BRICK_SIZE * DistanceField::BRICK_SIZE + y_index * DistanceField::BRICK_SIZE + x_index;
@@ -38,7 +62,7 @@ void DistanceFieldBrickTask::doWork() {
                 float closest_distance = point_query.queryDistance(sample_position, 1.5f * local_space_trace_distance);
 
                 if (closest_distance <= local_space_trace_distance) { // only trace rays for valid distance
-                    int hit_back_count = 0;
+                    glm::uint32 hit_back_count = 0;
 
                     for (const glm::vec3 unit_ray_direction : sample_direction) {
                         const float pullback_epsilon = 1e-4f;
@@ -71,26 +95,6 @@ void DistanceFieldBrickTask::doWork() {
         }
     }
 }
-
-template <std::integral T>
-T divide_and_round_up(T dividend, T divisor) {
-    return (dividend + divisor - 1) / divisor;
-}
-
-template <typename T> // T should be a STL container
-constexpr std::size_t element_size(T const & /*unused*/) {
-    return sizeof(typename T::value_type);
-}
-
-constexpr float max_component(glm::vec3 vec) {
-    return std::max(vec.x, std::max(vec.y, vec.z));
-}
-
-inline glm::uint compute_linear_voxel_index(glm::uvec3 voxel_coordinate, glm::uvec3 volume_dimensions) {
-    return (voxel_coordinate.z * volume_dimensions.y + voxel_coordinate.y) * volume_dimensions.x + voxel_coordinate.x;
-}
-
-extern ArgParser &arg_parser;
 
 void generate_distance_field_volume_data(Mesh const &mesh, Box local_space_mesh_bounds, float distance_field_resolution_scale,
                                          DistanceFieldVolumeData &out_data) {
@@ -139,7 +143,7 @@ void generate_distance_field_volume_data(Mesh const &mesh, Box local_space_mesh_
 
     std::vector<glm::uint8> streamable_mip_data;
 
-    for (int mip_index = 0; mip_index < DistanceField::NUM_MIPS; ++mip_index) {
+    for (glm::uint32 mip_index = 0; mip_index < DistanceField::NUM_MIPS; ++mip_index) {
         const glm::uvec3 indirection_dimensions{
             divide_and_round_up(mip0_indirection_dimensions.x, 1u << mip_index),
             divide_and_round_up(mip0_indirection_dimensions.y, 1u << mip_index),
@@ -159,9 +163,9 @@ void generate_distance_field_volume_data(Mesh const &mesh, Box local_space_mesh_
         std::vector<DistanceFieldBrickTask> brick_tasks;
         brick_tasks.reserve(indirection_dimensions.x * indirection_dimensions.y * indirection_dimensions.z / 8);
 
-        for (glm::uint z_index = 0; z_index < indirection_dimensions.z; ++z_index) {
-            for (glm::uint y_index = 0; y_index < indirection_dimensions.y; ++y_index) {
-                for (glm::uint x_index = 0; x_index < indirection_dimensions.x; ++x_index) {
+        for (glm::uint32 z_index = 0; z_index < indirection_dimensions.z; ++z_index) {
+            for (glm::uint32 y_index = 0; y_index < indirection_dimensions.y; ++y_index) {
+                for (glm::uint32 x_index = 0; x_index < indirection_dimensions.x; ++x_index) {
                     brick_tasks.emplace_back(embree_scene, sample_directions, local_space_trace_distance, distance_field_volume_bounds,
                                              glm::uvec3{x_index, y_index, z_index}, indirection_voxel_size);
                 }
@@ -179,7 +183,7 @@ void generate_distance_field_volume_data(Mesh const &mesh, Box local_space_mesh_
 
         SparseDistanceFieldMip &out_mip = out_data.mips[mip_index];
         std::vector<glm::uint32> indirection_table;
-        indirection_table.resize((std::size_t) indirection_dimensions.x * indirection_dimensions.y * indirection_dimensions.z,
+        indirection_table.resize(std::size_t(indirection_dimensions.x) * indirection_dimensions.y * indirection_dimensions.z,
                                  DistanceField::INVALID_BRICK_INDEX);
 
         std::vector<DistanceFieldBrickTask const *> valid_bricks;
@@ -191,8 +195,8 @@ void generate_distance_field_volume_data(Mesh const &mesh, Box local_space_mesh_
             }
         }
 
-        const glm::uint num_bricks = valid_bricks.size();
-        const glm::uint brick_size_bytes =
+        const glm::uint32 num_bricks = valid_bricks.size();
+        const glm::uint32 brick_size_bytes =
             DistanceField::BRICK_SIZE * DistanceField::BRICK_SIZE * DistanceField::BRICK_SIZE * 1; // GPixelFormats[G8].BlockBytes == 1
 
         std::vector<glm::uint8> distance_field_brick_data;
@@ -201,15 +205,15 @@ void generate_distance_field_volume_data(Mesh const &mesh, Box local_space_mesh_
 
         for (std::size_t brick_index = 0; brick_index < valid_bricks.size(); ++brick_index) {
             const DistanceFieldBrickTask &brick = *valid_bricks[brick_index];
-            const glm::uint indirection_index = compute_linear_voxel_index(brick.brick_coordinate, indirection_dimensions);
+            const glm::uint32 indirection_index = compute_linear_voxel_index(brick.brick_coordinate, indirection_dimensions);
             indirection_table[indirection_index] = brick_index;
 
             assert(brick_size_bytes == brick.distance_field_volume.size() * element_size(brick.distance_field_volume));
             std::memcpy(&distance_field_brick_data[brick_index * brick_size_bytes], brick.distance_field_volume.data(), brick_size_bytes);
         }
 
-        const glm::uint indirection_table_bytes = indirection_table.size() * element_size(indirection_table);
-        const glm::uint mip_data_bytes = indirection_table_bytes + distance_field_brick_data.size();
+        const glm::uint32 indirection_table_bytes = indirection_table.size() * element_size(indirection_table);
+        const glm::uint32 mip_data_bytes = indirection_table_bytes + distance_field_brick_data.size();
 
         if (mip_index == DistanceField::NUM_MIPS - 1) {
             out_data.always_loaded_mip.resize(mip_data_bytes);
