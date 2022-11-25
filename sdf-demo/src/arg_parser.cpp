@@ -22,15 +22,10 @@ void ArgParser::parseCommandLine(int argc, const char *argv[]) {
         } else if (strcmp(argv[i], "-scale") == 0) {
             next_and_check(i);
             df_resolution_scale = (float) atof(argv[i]);
-        } else if (strcmp(argv[i], "-d") == 0) {
-            next_and_check(i);
-            display_distance = (float) atof(argv[i]);
-        } else if (strcmp(argv[i], "-outside") == 0) {
-            outside_only = true;
-        } else if (strcmp(argv[i], "-sample") == 0) {
-            sample_mode = true;
-        } else if (strcmp(argv[i], "-parallel") == 0) {
-            parallel = true;
+        } else if (strcmp(argv[i], "-no-parallel") == 0) {
+            parallel = false;
+        } else if (strcmp(argv[i], "-brick") == 0) {
+            debug_brick = true;
         }
     }
 }

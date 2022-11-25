@@ -23,9 +23,8 @@ public:
     float voxel_density = 0.2;
     float df_resolution_scale = 1.0; // per mesh in ue5
     float display_distance = 0.0f;
-    bool outside_only = false;
-    bool sample_mode = false;
-    bool parallel = false;
+    bool debug_brick = false;
+    bool parallel = true;
 
     ArgParser(_ /*unused*/){};
     void parseCommandLine(int argc, const char *argv[]);

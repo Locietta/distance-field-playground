@@ -196,8 +196,8 @@ void generate_distance_field_volume_data(Mesh const &mesh, Box local_space_mesh_
         }
 
         const glm::uint32 num_bricks = valid_bricks.size();
-        const glm::uint32 brick_size_bytes =
-            DistanceField::BRICK_SIZE * DistanceField::BRICK_SIZE * DistanceField::BRICK_SIZE * 1; // GPixelFormats[G8].BlockBytes == 1
+        const glm::uint32 brick_size_bytes = DistanceField::BRICK_SIZE * DistanceField::BRICK_SIZE * DistanceField::BRICK_SIZE * 1;
+        // GPixelFormats[G8].BlockBytes == 1
 
         std::vector<glm::uint8> distance_field_brick_data;
         /// XXX: un-inited in UE5, vector<T>::resize will do zero-init
