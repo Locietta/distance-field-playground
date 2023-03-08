@@ -89,7 +89,9 @@ void DistanceFieldDumpTask::doWork() noexcept {
 
             const glm::vec3 sample_position = glm::vec3(voxel_coordinate) * sdf_voxel_size + brick_min_position;
             const glm::uint8 distance = glm::uint8(255) - brick_data[std::size_t(brick_index) * brick_size_bytes + i];
-            vertices[i] = {sample_position, uchar4{distance, distance, distance, 255}};
+            const auto gamma_color = glm::uint8(std::pow(float(distance) / 255.0f, 1.0f / 2.2f) * 255.0f);
+
+            vertices[i] = {sample_position, uchar4{gamma_color, gamma_color, gamma_color, 255}};
         }
     }
 }
