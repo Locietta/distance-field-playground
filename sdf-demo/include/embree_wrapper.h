@@ -13,14 +13,16 @@ namespace embree {
 struct Geometry {
     std::span<const glm::uvec3> indices_buffer;
     std::span<const glm::vec3> vertices_buffer;
-    RTCGeometry internal = nullptr;
+    RTCGeometry handle = nullptr; // transformed geometry handle
 };
 
 class Scene {
 public:
     Scene();
-
     ~Scene();
+
+    Scene(const Scene &) = delete;
+    Scene operator=(const Scene &) = delete;
 
     void addMesh(Mesh const &mesh);
 

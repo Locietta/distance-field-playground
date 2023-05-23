@@ -18,24 +18,23 @@ Scene::~Scene() {
 }
 
 void Scene::addMesh(Mesh const &mesh) {
-    geos_.push_back({mesh.indices, mesh.vertices, nullptr});
+    RTCGeometry geo_handle = rtcNewGeometry(device_, RTC_GEOMETRY_TYPE_TRIANGLE);
 
-    Geometry &curr_geo = geos_.back();
+    rtcSetSharedGeometryBuffer(geo_handle, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, mesh.vertices.data(), 0, sizeof(glm::vec3),
+                               mesh.vertices.size());
+    rtcSetSharedGeometryBuffer(geo_handle, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, mesh.indices.data(), 0, sizeof(glm::uvec3),
+                               mesh.indices.size());
 
-    curr_geo.internal = rtcNewGeometry(device_, RTC_GEOMETRY_TYPE_TRIANGLE);
-    rtcSetSharedGeometryBuffer(curr_geo.internal, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, curr_geo.vertices_buffer.data(), 0,
-                               sizeof(glm::vec3), curr_geo.vertices_buffer.size());
-    rtcSetSharedGeometryBuffer(curr_geo.internal, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, curr_geo.indices_buffer.data(), 0,
-                               sizeof(glm::uvec3), curr_geo.indices_buffer.size());
+    geos_.emplace_back(mesh.indices, mesh.vertices, geo_handle);
 }
 
 void Scene::commit() {
     for (auto &geo : geos_) {
-        rtcSetGeometryUserData(geo.internal, &geo);
+        rtcSetGeometryUserData(geo.handle, &geo);
 
-        rtcCommitGeometry(geo.internal);
-        rtcAttachGeometry(scene_, geo.internal);
-        rtcReleaseGeometry(geo.internal);
+        rtcCommitGeometry(geo.handle);
+        rtcAttachGeometry(scene_, geo.handle);
+        rtcReleaseGeometry(geo.handle);
     }
     rtcJoinCommitScene(scene_);
 }
@@ -93,7 +92,7 @@ public:
 ClosestQueryContext::ClosestQueryContext(Scene const &scene) : scene_{scene.scene_} {
     rtcInitPointQueryContext(this);
     for (const auto &geo : scene.geos_) {
-        mesh_geometries_.push_back(geo.internal);
+        mesh_geometries_.push_back(geo.handle);
         num_triangles_.push_back(geo.indices_buffer.size());
     }
 }
