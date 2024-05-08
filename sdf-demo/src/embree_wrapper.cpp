@@ -41,7 +41,7 @@ void Scene::commit() {
 
 RayHit IntersectionContext::emitRay(glm::vec3 const &origin, glm::vec3 const &direction, float far) {
     RayHit rayhit{origin, direction, far};
-    rtcIntersect1(scene_, this, &rayhit);
+    rtcIntersect1(scene_, &rayhit, this);
     return rayhit;
 }
 

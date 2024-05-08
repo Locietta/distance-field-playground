@@ -1,7 +1,7 @@
 #pragma once
 
-#include <embree3/rtcore.h>
-#include <embree3/rtcore_ray.h>
+#include <embree4/rtcore.h>
+#include <embree4/rtcore_ray.h>
 #include <glm/vec3.hpp>
 #include <span>
 #include <vector>
@@ -41,13 +41,13 @@ public:
     [[nodiscard]] bool isValidHit() const { return hit.geomID != RTC_INVALID_GEOMETRY_ID && hit.primID != RTC_INVALID_GEOMETRY_ID; }
 };
 
-class IntersectionContext : public RTCIntersectContext {
+class IntersectionContext : public RTCIntersectArguments {
 public:
-    IntersectionContext(Scene const &scene) : scene_{scene.scene_} { rtcInitIntersectContext(this); }
+    IntersectionContext(Scene const &scene) : scene_{scene.scene_} { rtcInitIntersectArguments(this); }
 
     RayHit emitRay(glm::vec3 const &origin, glm::vec3 const &direction, float far);
 
-    void emitRay(RayHit *rayhit) { rtcIntersect1(scene_, this, rayhit); }
+    void emitRay(RayHit *rayhit) { rtcIntersect1(scene_, rayhit, this); }
 
 private:
     RTCScene const &scene_;
